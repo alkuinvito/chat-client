@@ -31,7 +31,9 @@ func RegisterView(v *views.View) fyne.CanvasObject {
 			widget.NewFormItem("Username", username),
 		},
 		SubmitText: "Register",
-		OnSubmit:   func() {}}
+		OnSubmit: func() {
+			RegisterUser(v.DB(), username.Text)
+		}}
 
 	gridCt := container.NewGridWrap(fyne.NewSize(400, form.MinSize().Height), form)
 	ct := container.NewCenter(gridCt)
