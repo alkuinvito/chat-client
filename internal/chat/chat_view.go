@@ -7,6 +7,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/alkuinvito/chat-client/internal/discovery"
@@ -15,6 +16,8 @@ import (
 )
 
 func ChatView(v *views.View) fyne.CanvasObject {
+	currentChat := ChatRoom{}
+
 	username, err := v.Store().Get("username")
 	if err != nil {
 		panic("no username")
@@ -67,6 +70,8 @@ func ChatView(v *views.View) fyne.CanvasObject {
 				chatItems = newItems
 				mu.Unlock()
 
+				dialog.ShowInformation("Scan result", fmt.Sprintf("Available peer(s) found: %d", len(newItems)), v.Window())
+
 				chatList.Refresh()
 			})
 		}()
@@ -76,10 +81,45 @@ func ChatView(v *views.View) fyne.CanvasObject {
 
 	sideBar := container.NewBorder(nil, refreshBtn, nil, nil, chatList)
 
-	chatWrapper := container.NewWithoutLayout(widget.NewLabel("No chat"))
+	msgInput := widget.NewEntry()
+	msgInput.SetPlaceHolder("Your message here...")
 
-	split := container.NewHSplit(sideBar, chatWrapper)
+	sendBtn := widget.NewButtonWithIcon("Send", theme.MailSendIcon(), func() {
+		message := ChatMessage{
+			Sender:  username,
+			Message: msgInput.Text,
+		}
+
+		go func() {
+			_, err := SendMessage(discovery.SVC_PORT, currentChat, message)
+			if err != nil {
+				fyne.Do(func() {
+					dialog.ShowError(err, v.Window())
+				})
+			}
+		}()
+	})
+
+	chatInput := container.NewBorder(nil, nil, nil, sendBtn, msgInput)
+	blankChat := container.NewCenter(widget.NewLabel("No chat"))
+
+	split := container.NewHSplit(sideBar, blankChat)
 	split.SetOffset(0.3)
+
+	chatList.OnSelected = func(id widget.ListItemID) {
+		mu.Lock()
+		currentChat = chatItems[id]
+		split.Trailing = container.NewBorder(
+			widget.NewLabel(fmt.Sprintf("Connected to: %s", chatItems[id].IP.String())),
+			chatInput,
+			nil,
+			nil,
+			widget.NewLabel("No chat"),
+		)
+		mu.Unlock()
+
+		split.Refresh()
+	}
 
 	return split
 }
