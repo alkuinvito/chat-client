@@ -110,7 +110,7 @@ func ChatView(v *views.View) fyne.CanvasObject {
 		mu.Lock()
 		currentChat = chatItems[id]
 		split.Trailing = container.NewBorder(
-			widget.NewLabel(fmt.Sprintf("Connected to: %s", chatItems[id].IP.String())),
+			widget.NewLabel(fmt.Sprintf("Connected to: %s - %s", chatItems[id].IP.String(), chatItems[id].PeerName)),
 			chatInput,
 			nil,
 			nil,
