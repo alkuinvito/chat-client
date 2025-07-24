@@ -25,25 +25,65 @@ func ChatView(v *views.View) fyne.CanvasObject {
 
 	go discovery.BroadcastService(username)
 
-	// Thread-safe chat items slice
 	var (
-		chatItems []ChatRoom
-		mu        sync.Mutex
+		rooms  []ChatRoom
+		muRoom sync.Mutex
+	)
+
+	var (
+		chats  []ChatMessage
+		muChat sync.Mutex
 	)
 
 	chatList := widget.NewList(
 		func() int {
-			mu.Lock()
-			defer mu.Unlock()
-			return len(chatItems)
+			muChat.Lock()
+			defer muChat.Unlock()
+			return len(chats)
 		},
 		func() fyne.CanvasObject {
 			return widget.NewLabel("")
 		},
 		func(i widget.ListItemID, o fyne.CanvasObject) {
-			mu.Lock()
-			defer mu.Unlock()
-			o.(*widget.Label).SetText(fmt.Sprintf("%s - %s", chatItems[i].IP.String(), chatItems[i].PeerName))
+			muChat.Lock()
+			defer muChat.Unlock()
+			o.(*widget.Label).SetText(fmt.Sprintf("%s: %s", chats[i].Sender, chats[i].Message))
+		},
+	)
+
+	// run chat server to handle incoming messages
+	msgStream := make(chan *ChatMessage)
+	go ServeChat(msgStream)
+
+	// loop to retrieve new message
+	go func() {
+		var newChats []ChatMessage
+		for msg := range msgStream {
+			fyne.Do(func() {
+				newChats = append(newChats, *msg)
+
+				muChat.Lock()
+				chats = newChats
+				muChat.Unlock()
+
+				chatList.Refresh()
+			})
+		}
+	}()
+
+	roomList := widget.NewList(
+		func() int {
+			muRoom.Lock()
+			defer muRoom.Unlock()
+			return len(rooms)
+		},
+		func() fyne.CanvasObject {
+			return widget.NewLabel("")
+		},
+		func(i widget.ListItemID, o fyne.CanvasObject) {
+			muRoom.Lock()
+			defer muRoom.Unlock()
+			o.(*widget.Label).SetText(fmt.Sprintf("%s - %s", rooms[i].IP.String(), rooms[i].PeerName))
 		},
 	)
 
@@ -53,36 +93,55 @@ func ChatView(v *views.View) fyne.CanvasObject {
 		go discovery.DiscoverService(entries)
 
 		go func() {
-			var newItems []ChatRoom
+			var newRooms []ChatRoom
 			for entry := range entries {
 				isP2PChat := strings.HasSuffix(entry.Name, fmt.Sprintf("%s.%s", discovery.SVC_NAME, discovery.SVC_DOMAIN))
 				if isP2PChat {
 					peerName := strings.Split(entry.Name, ".")[0]
 					isOwnService := peerName == username
 					if !isOwnService {
-						newItems = append(newItems, ChatRoom{PeerName: peerName, IP: entry.AddrV4})
+						newRooms = append(newRooms, ChatRoom{PeerName: peerName, IP: entry.AddrV4})
 					}
 				}
 			}
 
 			fyne.Do(func() {
-				mu.Lock()
-				chatItems = newItems
-				mu.Unlock()
+				muRoom.Lock()
+				rooms = newRooms
+				muRoom.Unlock()
 
-				dialog.ShowInformation("Scan result", fmt.Sprintf("Available peer(s) found: %d", len(newItems)), v.Window())
+				dialog.ShowInformation("Scan result", fmt.Sprintf("Available peer(s) found: %d", len(newRooms)), v.Window())
 
-				chatList.Refresh()
+				roomList.Refresh()
 			})
 		}()
 	}
 
 	refreshBtn := widget.NewButtonWithIcon("Refresh", theme.ViewRefreshIcon(), refreshDiscovery)
 
-	sideBar := container.NewBorder(nil, refreshBtn, nil, nil, chatList)
+	sideBar := container.NewBorder(nil, refreshBtn, nil, nil, roomList)
 
 	msgInput := widget.NewEntry()
 	msgInput.SetPlaceHolder("Your message here...")
+	// handle submit on enter
+	msgInput.OnSubmitted = func(s string) {
+		message := ChatMessage{
+			Sender:  username,
+			Message: s,
+		}
+
+		go func() {
+			_, err := SendMessage(discovery.SVC_PORT, currentChat, message)
+			if err != nil {
+				fyne.Do(func() {
+					dialog.ShowError(err, v.Window())
+				})
+			}
+		}()
+
+		// clear input after submit
+		msgInput.SetText("")
+	}
 
 	sendBtn := widget.NewButtonWithIcon("Send", theme.MailSendIcon(), func() {
 		message := ChatMessage{
@@ -98,6 +157,9 @@ func ChatView(v *views.View) fyne.CanvasObject {
 				})
 			}
 		}()
+
+		// clear input after submit
+		msgInput.SetText("")
 	})
 
 	chatInput := container.NewBorder(nil, nil, nil, sendBtn, msgInput)
@@ -106,17 +168,18 @@ func ChatView(v *views.View) fyne.CanvasObject {
 	split := container.NewHSplit(sideBar, blankChat)
 	split.SetOffset(0.3)
 
-	chatList.OnSelected = func(id widget.ListItemID) {
-		mu.Lock()
-		currentChat = chatItems[id]
+	roomList.OnSelected = func(id widget.ListItemID) {
+		muRoom.Lock()
+		currentChat = rooms[id]
+		muRoom.Unlock()
+
 		split.Trailing = container.NewBorder(
-			widget.NewLabel(fmt.Sprintf("Connected to: %s - %s", chatItems[id].IP.String(), chatItems[id].PeerName)),
+			widget.NewLabel(fmt.Sprintf("Connected to: %s - %s", currentChat.IP.String(), currentChat.PeerName)),
 			chatInput,
 			nil,
 			nil,
-			widget.NewLabel("No chat"),
+			chatList,
 		)
-		mu.Unlock()
 
 		split.Refresh()
 	}
