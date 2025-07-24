@@ -2,11 +2,12 @@ package chat
 
 import (
 	"fmt"
-	"log"
+	"strings"
 	"sync"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/alkuinvito/chat-client/internal/discovery"
 	"github.com/alkuinvito/chat-client/pkg/views"
@@ -23,7 +24,7 @@ func ChatView(v *views.View) fyne.CanvasObject {
 
 	// Thread-safe chat items slice
 	var (
-		chatItems []string
+		chatItems []ChatRoom
 		mu        sync.Mutex
 	)
 
@@ -39,20 +40,26 @@ func ChatView(v *views.View) fyne.CanvasObject {
 		func(i widget.ListItemID, o fyne.CanvasObject) {
 			mu.Lock()
 			defer mu.Unlock()
-			o.(*widget.Label).SetText(chatItems[i])
+			o.(*widget.Label).SetText(fmt.Sprintf("%s - %s", chatItems[i].IP.String(), chatItems[i].PeerName))
 		},
 	)
 
 	refreshDiscovery := func() {
-		entries := make(chan *mdns.ServiceEntry)
+		entries := make(chan *mdns.ServiceEntry, 4)
 
 		go discovery.DiscoverService(entries)
 
 		go func() {
-			var newItems []string
+			var newItems []ChatRoom
 			for entry := range entries {
-				log.Println(entry.Host, entry.AddrV4.String())
-				newItems = append(newItems, fmt.Sprintf("%s - %s", entry.Host, entry.AddrV4.String()))
+				isP2PChat := strings.HasSuffix(entry.Name, fmt.Sprintf("%s.%s", discovery.SVC_NAME, discovery.SVC_DOMAIN))
+				if isP2PChat {
+					peerName := strings.Split(entry.Name, ".")[0]
+					isOwnService := peerName == username
+					if !isOwnService {
+						newItems = append(newItems, ChatRoom{PeerName: peerName, IP: entry.AddrV4})
+					}
+				}
 			}
 
 			fyne.Do(func() {
@@ -65,13 +72,13 @@ func ChatView(v *views.View) fyne.CanvasObject {
 		}()
 	}
 
-	refreshBtn := widget.NewButton("Refresh", refreshDiscovery)
+	refreshBtn := widget.NewButtonWithIcon("Refresh", theme.ViewRefreshIcon(), refreshDiscovery)
 
-	chatTabs := container.NewAppTabs(
-		container.NewTabItem("New Chat", refreshBtn),
-	)
+	sideBar := container.NewBorder(nil, refreshBtn, nil, nil, chatList)
 
-	split := container.NewHSplit(chatList, chatTabs)
+	chatWrapper := container.NewWithoutLayout(widget.NewLabel("No chat"))
+
+	split := container.NewHSplit(sideBar, chatWrapper)
 	split.SetOffset(0.3)
 
 	return split
