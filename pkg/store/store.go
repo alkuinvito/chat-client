@@ -6,6 +6,11 @@ type Store struct {
 	m map[string]string
 }
 
+type IStore interface {
+	Get(key string) (string, error)
+	Set(key, val string)
+}
+
 func NewStore() *Store {
 	m := make(map[string]string)
 	return &Store{m}

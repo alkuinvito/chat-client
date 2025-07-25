@@ -1,22 +1,51 @@
 package main
 
 import (
-	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/app"
-	"github.com/alkuinvito/chat-client/internal/auth"
-	"github.com/alkuinvito/chat-client/pkg/db"
-	"github.com/alkuinvito/chat-client/pkg/views"
+	"chat-client/internal/auth"
+	"chat-client/internal/chat"
+	"chat-client/internal/discovery"
+	"chat-client/pkg/store"
+	"embed"
+
+	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/options"
+	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 )
 
+//go:embed all:frontend/dist
+var assets embed.FS
+
 func main() {
-	db := db.NewDB()
+	// Setup new data store
+	s := store.NewStore()
 
-	a := app.New()
-	view := views.NewView(a, "P2P Chat", db)
-	view.Window().Resize(fyne.NewSize(900, 600))
+	// Instantiate services
+	discoveryService := discovery.NewDiscoveryService()
+	chatService := chat.NewChatService(s, discoveryService)
+	authService := auth.NewAuthService(s, discoveryService)
 
-	// register new user as entrypoint
-	view.Render(auth.RegisterView)
+	// Create an instance of the app structure
+	app := NewApp(authService, discoveryService)
 
-	view.Run()
+	// Create application with options
+	err := wails.Run(&options.App{
+		Title:  "chat-client",
+		Width:  1024,
+		Height: 768,
+		AssetServer: &assetserver.Options{
+			Assets: assets,
+		},
+		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
+		OnStartup:        app.startup,
+		Bind: []any{
+			app,
+			authService,
+			chatService,
+			discoveryService,
+		},
+	})
+
+	if err != nil {
+		println("Error:", err.Error())
+	}
 }
