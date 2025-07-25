@@ -1,19 +1,17 @@
-import { GetRooms } from "../../wailsjs/go/chat/ChatService";
+import { chat } from "../../wailsjs/go/models";
 import { LogInfo } from "../../wailsjs/runtime/runtime";
+import MainLayout from "@/components/MainLayout";
+import ChatRoom from "../components/ChatRoom";
 
 export default function Chat() {
-  const getRooms = () => {
-    GetRooms().then((rooms) => {
-      for (const room of rooms) {
-        LogInfo(room);
-      }
-    });
+  const handleSelectRoom = (selected: chat.ChatRoom) => {
+    LogInfo(selected.peer_name);
   };
 
   return (
-    <div>
-      <h1>Chat here</h1>
-      <button onClick={getRooms}>Refresh</button>
-    </div>
+    <MainLayout className="flex">
+      <ChatRoom onSelect={handleSelectRoom} />
+      <div></div>
+    </MainLayout>
   );
 }
