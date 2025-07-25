@@ -42,7 +42,9 @@ func ChatView(v *views.View) fyne.CanvasObject {
 			return len(chats)
 		},
 		func() fyne.CanvasObject {
-			return widget.NewLabel("")
+			chatItem := widget.NewLabel("")
+			chatItem.Wrapping = fyne.TextWrapWord
+			return chatItem
 		},
 		func(i widget.ListItemID, o fyne.CanvasObject) {
 			muChat.Lock()
@@ -52,21 +54,19 @@ func ChatView(v *views.View) fyne.CanvasObject {
 	)
 
 	// run chat server to handle incoming messages
-	msgStream := make(chan *ChatMessage)
+	msgStream := make(chan *ChatMessage, 10)
 	go ServeChat(msgStream)
 
 	// loop to retrieve new message
 	go func() {
-		var newChats []ChatMessage
 		for msg := range msgStream {
 			fyne.Do(func() {
-				newChats = append(newChats, *msg)
-
 				muChat.Lock()
-				chats = newChats
+				chats = append(chats, *msg)
 				muChat.Unlock()
 
 				chatList.Refresh()
+				chatList.ScrollToBottom()
 			})
 		}
 	}()
@@ -95,9 +95,9 @@ func ChatView(v *views.View) fyne.CanvasObject {
 		go func() {
 			var newRooms []ChatRoom
 			for entry := range entries {
-				isP2PChat := strings.HasSuffix(entry.Name, fmt.Sprintf("%s.%s", discovery.SVC_NAME, discovery.SVC_DOMAIN))
-				if isP2PChat {
-					peerName := strings.Split(entry.Name, ".")[0]
+				parsed := strings.Split(entry.Name, ".")
+				if len(parsed) > 0 {
+					peerName := parsed[0]
 					isOwnService := peerName == username
 					if !isOwnService {
 						newRooms = append(newRooms, ChatRoom{PeerName: peerName, IP: entry.AddrV4})
@@ -121,7 +121,10 @@ func ChatView(v *views.View) fyne.CanvasObject {
 
 	sideBar := container.NewBorder(nil, refreshBtn, nil, nil, roomList)
 
-	msgInput := widget.NewEntry()
+	msgInput := widget.NewMultiLineEntry()
+	msgInput.SetMinRowsVisible(2)
+	msgInput.Scroll = fyne.ScrollVerticalOnly
+	msgInput.Wrapping = fyne.TextWrapWord
 	msgInput.SetPlaceHolder("Your message here...")
 	// handle submit on enter
 	msgInput.OnSubmitted = func(s string) {
@@ -137,6 +140,16 @@ func ChatView(v *views.View) fyne.CanvasObject {
 					dialog.ShowError(err, v.Window())
 				})
 			}
+
+			fyne.Do(func() {
+				// add message to chatList
+				muChat.Lock()
+				chats = append(chats, message)
+				muChat.Unlock()
+
+				chatList.Refresh()
+				chatList.ScrollToBottom()
+			})
 		}()
 
 		// clear input after submit
