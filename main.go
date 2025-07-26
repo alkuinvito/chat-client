@@ -22,10 +22,10 @@ func main() {
 	// Instantiate services
 	discoveryService := discovery.NewDiscoveryService()
 	chatService := chat.NewChatService(s, discoveryService)
-	authService := auth.NewAuthService(s, discoveryService)
+	authService := auth.NewAuthService(s, discoveryService, chatService)
 
 	// Create an instance of the app structure
-	app := NewApp(authService, discoveryService)
+	app := NewApp(authService, chatService, discoveryService)
 
 	// Create application with options
 	err := wails.Run(&options.App{

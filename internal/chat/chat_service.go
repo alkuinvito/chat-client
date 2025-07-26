@@ -1,11 +1,18 @@
 package chat
 
 import (
+	"bytes"
 	"chat-client/internal/discovery"
+	"chat-client/pkg/response"
 	"chat-client/pkg/store"
 	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
 	"strings"
 	"sync"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/hashicorp/mdns"
 )
@@ -60,6 +67,52 @@ func (cs *ChatService) GetRooms() []ChatRoom {
 	return result
 }
 
+func (cs *ChatService) SendMessage(room ChatRoom, message ChatMessage) response.Response {
+	url := fmt.Sprintf("http://%s:%d/chat", room.IP, discovery.SVC_PORT)
+
+	payload, err := json.Marshal(message)
+	if err != nil {
+		return response.New("failed to send message").Status(500)
+	}
+
+	_, err = http.Post(url, "application/json", bytes.NewBuffer(payload))
+	if err != nil {
+		return response.New("failed to send message").Status(500)
+	}
+
+	return response.New("message sent")
+}
+
 func (cs *ChatService) Startup(ctx context.Context) {
 	cs.ctx = ctx
+}
+
+func (cs *ChatService) ServeChat() {
+	http.HandleFunc("/chat", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		var payload ChatMessage
+		decoder := json.NewDecoder(r.Body)
+		err := decoder.Decode(&payload)
+		if err != nil {
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			return
+		}
+
+		runtime.EventsEmit(cs.ctx, "msg:new", fmt.Sprintf(`{"sender":"%s","message":"%s"}`, payload.Sender, payload.Message))
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"received"}`))
+	})
+
+	go func() {
+		fmt.Printf("Server is running on: 127.0.0.1:%d\n", discovery.SVC_PORT)
+		err := http.ListenAndServe(fmt.Sprintf(":%d", discovery.SVC_PORT), nil)
+		if err != nil {
+			panic(err)
+		}
+	}()
 }

@@ -13,7 +13,7 @@ function App() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    EventsOn("navigate", (path) => {
+    EventsOn("auth:authorized", (path) => {
       navigate(path);
     });
   }, [navigate]);

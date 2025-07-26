@@ -1,71 +1,102 @@
-import { chat } from "../../wailsjs/go/models";
-import { useState } from "react";
-import { GetRooms } from "../../wailsjs/go/chat/ChatService";
-import { RotateCw } from "lucide-react";
+import { auth, chat } from "../../wailsjs/go/models";
+import { EventsOn, LogInfo } from "../../wailsjs/runtime/runtime";
+import { useEffect, useState } from "react";
+import { Input } from "./ui/input";
+import { Button } from "./ui/button";
+import { Textarea } from "./ui/textarea";
+import { SendMessage } from "../../wailsjs/go/chat/ChatService";
 
 interface ChatRoomProps {
-  onSelect: (room: chat.ChatRoom) => void;
+  user: auth.UserModel;
+  room: chat.ChatRoom;
 }
 
-export default function ChatRoom({ onSelect }: ChatRoomProps) {
-  const [rooms, setRooms] = useState<chat.ChatRoom[]>();
-  const [isLoading, setIsLoading] = useState(false);
+interface ChatMessage {
+  sender: string;
+  message: string;
+}
 
-  const getRooms = () => {
-    setIsLoading(true);
+export default function ChatRoom({ user, room }: ChatRoomProps) {
+  const [messages, setMessage] = useState<ChatMessage[]>([]);
+  const [msg, setMsg] = useState("");
 
-    GetRooms()
-      .then((res) => {
-        setRooms(res);
-        setIsLoading(false);
-      })
-      .catch((e) => {
-        setIsLoading(false);
-      });
+  const handleSubmit = (input: string) => {
+    if (input.length >= 1 && input.length <= 250) {
+      const message: chat.ChatMessage = {
+        sender: user.username,
+        message: input,
+      };
+
+      SendMessage(room, message)
+        .then((res) => {
+          if (res.code != 200) {
+            LogInfo(`Error ${res.code.toString()} - ${res.code}`);
+          } else {
+            setMessage((prev) => [...(prev ?? []), message]);
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          setMsg("");
+        });
+    }
   };
 
+  useEffect(() => {
+    EventsOn("msg:new", (ev) => {
+      const message = JSON.parse(ev) as ChatMessage;
+      setMessage((prev) => [...(prev ?? []), message]);
+    });
+  }, []);
+
   return (
-    <div className="grow flex flex-col max-w-[280px] h-full bg-neutral-800">
-      <div className="flex items-center w-full h-12 border-b border-neutral-900">
-        <div className="grow flex items-center px-4 h-full text-left border-r border-neutral-900">
-          <span className="select-none">Jajang</span>
-        </div>
-        <button
-          className="size-12 hover:bg-neutral-700 transition-colors"
-          onClick={getRooms}
-        >
-          <RotateCw className="mx-auto" size={20} />
-        </button>
-      </div>
-      {isLoading ? (
-        <div className="grow h-full flex items-center justify-center">
-          <span className="text-neutral-500 select-none">
-            Searching available peer(s)...
-          </span>
-        </div>
-      ) : rooms ? (
-        <ul className="grow h-full">
-          {rooms.map((room) => (
-            <li key={room.ip}>
-              <button
-                className="grid p-2 w-full text-left hover:bg-neutral-700 transition-colors"
-                onClick={() => onSelect(room)}
+    <div className="grow h-full flex flex-col">
+      <ul className="grow overflow-y-auto p-2">
+        {messages &&
+          messages.map((message, i) =>
+            message.sender == user.username ? (
+              <li
+                key={`msg-${i}`}
+                className="flex flex-col items-end w-full my-2 text-right"
               >
-                <span className="select-none line-clamp-1">
-                  {room.peer_name}
+                <span className="text-xs text-neutral-300">
+                  {message.sender}
                 </span>
-                <span className="select-none line-clamp-1 text-xs text-neutral-400">
-                  {room.ip}
+                <span className="w-min max-w-1/2 p-2 bg-neutral-800 rounded-lg">
+                  {message.message}
                 </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <div className="grow h-full flex items-center justify-center">
-          <span className="text-neutral-500 select-none">No peer found.</span>
-        </div>
-      )}
+              </li>
+            ) : (
+              <li
+                key={`msg-${i}`}
+                className="flex flex-col w-full my-2 text-left"
+              >
+                <span className="text-xs text-neutral-300">
+                  {message.sender}
+                </span>
+                <span className="w-min max-w-1/2 p-2 bg-neutral-800 rounded-lg">
+                  {message.message}
+                </span>
+              </li>
+            ),
+          )}
+      </ul>
+      <div className="flex gap-2 p-2">
+        <Textarea
+          name="message"
+          className="border-neutral-700 h-auto min-h-9 text-base resize-none"
+          minLength={1}
+          maxLength={250}
+          rows={1}
+          value={msg}
+          onInput={(e) => {
+            setMsg(e.currentTarget.value);
+          }}
+        />
+        <Button variant="secondary" onClick={() => handleSubmit(msg)}>
+          Send
+        </Button>
+      </div>
     </div>
   );
 }

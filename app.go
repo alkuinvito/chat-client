@@ -2,6 +2,7 @@ package main
 
 import (
 	"chat-client/internal/auth"
+	"chat-client/internal/chat"
 	"chat-client/internal/discovery"
 	"context"
 )
@@ -10,13 +11,15 @@ import (
 type App struct {
 	ctx              context.Context
 	authService      *auth.AuthService
+	chatService      *chat.ChatService
 	discoveryService *discovery.DiscoveryService
 }
 
 // NewApp creates a new App application struct
-func NewApp(authService *auth.AuthService, discoveryService *discovery.DiscoveryService) *App {
+func NewApp(authService *auth.AuthService, chatService *chat.ChatService, discoveryService *discovery.DiscoveryService) *App {
 	return &App{
 		authService:      authService,
+		chatService:      chatService,
 		discoveryService: discoveryService,
 	}
 }
@@ -26,5 +29,6 @@ func NewApp(authService *auth.AuthService, discoveryService *discovery.Discovery
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.authService.Startup(ctx)
+	a.chatService.Startup(ctx)
 	a.discoveryService.Startup(ctx)
 }
