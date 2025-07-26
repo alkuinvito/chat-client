@@ -50,7 +50,7 @@ export default function ChatList({ user, onSelect }: ChatListProps) {
           {rooms.map((room) => (
             <li key={room.ip}>
               <button
-                className="grid px-4 py-2 w-full text-left enabled:hover:bg-neutral-700 transition-colors disabled:bg-neutral-700"
+                className="grid px-4 py-2 w-full text-left enabled:hover:bg-neutral-700 transition-colors disabled:bg-neutral-700 disabled:hover:bg-neutral-600"
                 onClick={() => {
                   setCurrent(room);
                   onSelect(room);
