@@ -39,7 +39,7 @@ func (cs *ChatService) GetRooms() response.Response[[]ChatRoom] {
 	var result []ChatRoom
 	var wg sync.WaitGroup
 
-	username, err := cs.s.Get("username")
+	username, err := cs.s.GetString("username")
 	if err != nil {
 		return response.New(result).Status(500)
 	}

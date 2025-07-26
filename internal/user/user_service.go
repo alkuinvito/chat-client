@@ -3,6 +3,7 @@ package user
 import (
 	"chat-client/internal/chat"
 	"chat-client/internal/discovery"
+	"chat-client/pkg/encryption"
 	"chat-client/pkg/response"
 	"chat-client/pkg/store"
 	"context"
@@ -53,7 +54,7 @@ func (as *UserService) GetDefaultUser() response.Response[UserProfile] {
 func (as *UserService) GetProfile() response.Response[UserProfile] {
 	var result UserModel
 
-	username, err := as.s.Get("username")
+	username, err := as.s.GetString("username")
 	if err != nil {
 		return response.New(result.toProfile()).Status(404)
 	}
@@ -77,8 +78,17 @@ func (as *UserService) Login(username, password string) response.Response[UserPr
 		return response.New(result.toProfile()).Status(401)
 	}
 
-	// store username in-memory
-	as.s.Set("username", username)
+	// get public key
+	pubkey, err := encryption.PasswordDecrypt([]byte(password), result.PubKey)
+	if err != nil {
+		return response.New(result.toProfile()).Status(500)
+	}
+
+	// store username in memory
+	as.s.Set("username", []byte(username))
+
+	// store pubkey in memory
+	as.s.Set("key:public", pubkey)
 
 	return response.New(result.toProfile())
 }
@@ -92,10 +102,30 @@ func (as *UserService) Register(username, password string) response.Response[Use
 		return response.New(user.toProfile()).Status(500)
 	}
 
+	priv, err := encryption.GeneratePrivateKey()
+	if err != nil {
+		log.Println(err)
+		return response.New(user.toProfile()).Status(500)
+	}
+
+	privEnc, err := encryption.PasswordEncrypt([]byte(password), priv.Bytes())
+	if err != nil {
+		log.Println(err)
+		return response.New(user.toProfile()).Status(500)
+	}
+
+	pubEnc, err := encryption.PasswordEncrypt([]byte(password), priv.PublicKey().Bytes())
+	if err != nil {
+		log.Println(err)
+		return response.New(user.toProfile()).Status(500)
+	}
+
 	user = UserModel{
 		ID:       ulid.Make().String(),
 		Username: username,
 		Password: string(hashed),
+		PrivKey:  privEnc,
+		PubKey:   pubEnc,
 	}
 
 	err = as.db.Create(&user).Error
@@ -104,8 +134,11 @@ func (as *UserService) Register(username, password string) response.Response[Use
 		return response.New(user.toProfile()).Status(500)
 	}
 
-	// store username in-memory
-	as.s.Set("username", username)
+	// store username in memory
+	as.s.Set("username", []byte(username))
+
+	// store public key in memory
+	as.s.Set("key:public", priv.PublicKey().Bytes())
 
 	// start broadcasting the service
 	go as.discoveryService.BroadcastService(username)
