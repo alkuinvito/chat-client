@@ -17,8 +17,8 @@ interface ChatMessage {
 }
 
 export default function ChatRoom({ user, room }: ChatRoomProps) {
-  const [messages, setMessage] = useState<ChatMessage[]>([]);
-  const [msg, setMsg] = useState("");
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [message, setMessage] = useState("");
 
   const handleSubmit = (input: string) => {
     if (input.length >= 1 && input.length <= 250) {
@@ -32,12 +32,12 @@ export default function ChatRoom({ user, room }: ChatRoomProps) {
           if (res.code != 200) {
             LogInfo(`Error ${res.code.toString()} - ${res.code}`);
           } else {
-            setMessage((prev) => [...(prev ?? []), message]);
+            setMessages((prev) => [...(prev ?? []), message]);
           }
         })
         .catch(() => {})
         .finally(() => {
-          setMsg("");
+          setMessage("");
         });
     }
   };
@@ -50,9 +50,9 @@ export default function ChatRoom({ user, room }: ChatRoomProps) {
   };
 
   useEffect(() => {
-    EventsOn("msg:new", (ev) => {
+    EventsOn("message:new", (ev) => {
       const message = JSON.parse(ev) as ChatMessage;
-      setMessage((prev) => [...(prev ?? []), message]);
+      setMessages((prev) => [...(prev ?? []), message]);
     });
   }, []);
 
@@ -60,17 +60,17 @@ export default function ChatRoom({ user, room }: ChatRoomProps) {
     <div className="grow h-full flex flex-col">
       <ul className="grow overflow-y-auto p-2 text-left">
         {messages &&
-          messages.map((message, i) =>
-            message.sender === user.username ? (
+          messages.map((msg, i) =>
+            msg.sender === user.username ? (
               <li key={`msg-${i}`} className={"flex justify-end w-full mb-1"}>
                 <span className="max-w-1/2 px-2 py-1 bg-neutral-800 rounded-lg whitespace-pre-wrap">
-                  {message.message}
+                  {msg.message}
                 </span>
               </li>
             ) : (
               <li key={`msg-${i}`} className="w-full mb-1">
                 <span className="max-w-1/2 px-2 py-1 bg-neutral-800 rounded-lg whitespace-pre-wrap">
-                  {message.message}
+                  {msg.message}
                 </span>
               </li>
             ),
@@ -83,16 +83,16 @@ export default function ChatRoom({ user, room }: ChatRoomProps) {
           minLength={1}
           maxLength={250}
           rows={1}
-          value={msg}
+          value={message}
           onInput={(e) => {
-            setMsg(e.currentTarget.value);
+            setMessage(e.currentTarget.value);
           }}
           onKeyDown={handleKeyDown}
         />
         <Button
           variant="secondary"
-          onClick={() => handleSubmit(msg)}
-          disabled={msg.length < 1 || msg.length > 250}
+          onClick={() => handleSubmit(message)}
+          disabled={message.length < 1 || message.length > 250}
         >
           Send
         </Button>
