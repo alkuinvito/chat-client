@@ -1,14 +1,18 @@
 import { auth, chat } from "../../wailsjs/go/models";
-import { EventsOn, LogInfo } from "../../wailsjs/runtime/runtime";
 import MainLayout from "@/components/MainLayout";
 import ChatList from "@/components/ChatList";
 import { useEffect, useState } from "react";
 import { GetProfile } from "../../wailsjs/go/auth/AuthService";
 import ChatRoom from "@/components/ChatRoom";
+import type { TProfileSchema, TResponseSchema } from "@/models";
+import { LogInfo } from "../../wailsjs/runtime/runtime";
+import { useNavigate } from "react-router";
 
 export default function Chat() {
-  const [user, setUser] = useState<auth.UserModel>();
+  const [user, setUser] = useState<TProfileSchema>();
   const [room, setRoom] = useState<chat.ChatRoom>();
+
+  const navigate = useNavigate();
 
   const handleSelectRoom = (selected: chat.ChatRoom) => {
     setRoom(selected);
@@ -16,8 +20,15 @@ export default function Chat() {
 
   useEffect(() => {
     GetProfile()
-      .then((res) => {
-        setUser(res);
+      .then((res: TResponseSchema<TProfileSchema>) => {
+        switch (res.code) {
+          case 200:
+            setUser(res.data);
+            break;
+          case 404:
+            navigate("/");
+            break;
+        }
       })
       .catch((e) => {});
   }, []);

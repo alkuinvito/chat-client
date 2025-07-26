@@ -1,14 +1,16 @@
 export namespace auth {
 	
-	export class UserModel {
+	export class UserProfile {
+	    id: string;
 	    username: string;
 	
 	    static createFrom(source: any = {}) {
-	        return new UserModel(source);
+	        return new UserProfile(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
 	        this.username = source["username"];
 	    }
 	}
@@ -50,18 +52,82 @@ export namespace chat {
 
 export namespace response {
 	
-	export class Response {
+	export class Response___chat_client_internal_chat_ChatRoom_ {
 	    code: number;
-	    message: string;
+	    data: chat.ChatRoom[];
 	
 	    static createFrom(source: any = {}) {
-	        return new Response(source);
+	        return new Response___chat_client_internal_chat_ChatRoom_(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.code = source["code"];
-	        this.message = source["message"];
+	        this.data = this.convertValues(source["data"], chat.ChatRoom);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Response_chat_client_internal_auth_UserProfile_ {
+	    code: number;
+	    data: auth.UserProfile;
+	
+	    static createFrom(source: any = {}) {
+	        return new Response_chat_client_internal_auth_UserProfile_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.code = source["code"];
+	        this.data = this.convertValues(source["data"], auth.UserProfile);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Response_string_ {
+	    code: number;
+	    data: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Response_string_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.code = source["code"];
+	        this.data = source["data"];
 	    }
 	}
 

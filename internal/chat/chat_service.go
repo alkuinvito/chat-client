@@ -24,7 +24,9 @@ type ChatService struct {
 }
 
 type IChatService interface {
-	GetRooms() []string
+	GetRooms() response.Response[[]ChatRoom]
+	SendMessage(room ChatRoom, message ChatMessage) response.Response[string]
+	ServeChat()
 	Startup(ctx context.Context)
 }
 
@@ -32,14 +34,14 @@ func NewChatService(s *store.Store, discoveryService *discovery.DiscoveryService
 	return &ChatService{s: s}
 }
 
-func (cs *ChatService) GetRooms() []ChatRoom {
+func (cs *ChatService) GetRooms() response.Response[[]ChatRoom] {
 	entries := make(chan *mdns.ServiceEntry, 4)
 	var result []ChatRoom
 	var wg sync.WaitGroup
 
 	username, err := cs.s.Get("username")
 	if err != nil {
-		return result
+		return response.New(result).Status(500)
 	}
 
 	wg.Add(1)
@@ -64,10 +66,10 @@ func (cs *ChatService) GetRooms() []ChatRoom {
 
 	wg.Wait()
 
-	return result
+	return response.New(result)
 }
 
-func (cs *ChatService) SendMessage(room ChatRoom, message ChatMessage) response.Response {
+func (cs *ChatService) SendMessage(room ChatRoom, message ChatMessage) response.Response[string] {
 	url := fmt.Sprintf("http://%s:%d/chat", room.IP, discovery.SVC_PORT)
 
 	payload, err := json.Marshal(message)

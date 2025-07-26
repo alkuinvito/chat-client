@@ -1,4 +1,5 @@
-import { auth, chat } from "../../wailsjs/go/models";
+import type { TProfileSchema, TResponseSchema } from "@/models";
+import { chat } from "../../wailsjs/go/models";
 import { EventsOn, LogInfo } from "../../wailsjs/runtime/runtime";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "./ui/button";
@@ -7,7 +8,7 @@ import { SendMessage } from "../../wailsjs/go/chat/ChatService";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
 interface ChatRoomProps {
-  user: auth.UserModel;
+  user: TProfileSchema;
   room: chat.ChatRoom;
 }
 
@@ -37,7 +38,7 @@ export default function ChatRoom({ user, room }: ChatRoomProps) {
       };
 
       SendMessage(room, message)
-        .then((res) => {
+        .then((res: TResponseSchema<string>) => {
           if (res.code != 200) {
             LogInfo(`Error ${res.code.toString()} - ${res.code}`);
           } else {

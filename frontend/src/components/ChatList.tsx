@@ -1,10 +1,11 @@
-import { auth, chat } from "../../wailsjs/go/models";
+import { chat } from "../../wailsjs/go/models";
 import { useState } from "react";
+import type { TChatRoom, TProfileSchema, TResponseSchema } from "@/models";
 import { GetRooms } from "../../wailsjs/go/chat/ChatService";
 import { RotateCw } from "lucide-react";
 
 interface ChatListProps {
-  user: auth.UserModel;
+  user: TProfileSchema;
   onSelect: (room: chat.ChatRoom) => void;
 }
 
@@ -17,8 +18,8 @@ export default function ChatList({ user, onSelect }: ChatListProps) {
     setIsLoading(true);
 
     GetRooms()
-      .then((res) => {
-        setRooms(res);
+      .then((res: TResponseSchema<TChatRoom[]>) => {
+        setRooms(res.data);
       })
       .catch((e) => {})
       .finally(() => {
@@ -27,7 +28,7 @@ export default function ChatList({ user, onSelect }: ChatListProps) {
   };
 
   return (
-    <div className="flex flex-col min-w-[280px] h-full bg-neutral-800">
+    <div className="flex flex-col w-screen max-w-[280px] h-full bg-neutral-800">
       <div className="flex items-center w-full h-12 border-b border-neutral-900">
         <div className="grow flex items-center px-4 h-full text-left border-r border-neutral-900">
           <span className="select-none">{user.username}</span>

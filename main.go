@@ -4,6 +4,7 @@ import (
 	"chat-client/internal/auth"
 	"chat-client/internal/chat"
 	"chat-client/internal/discovery"
+	"chat-client/pkg/db"
 	"chat-client/pkg/store"
 	"embed"
 
@@ -19,10 +20,13 @@ func main() {
 	// Setup new data store
 	s := store.NewStore()
 
+	// Setup sqlite db
+	db := db.NewDB()
+
 	// Instantiate services
 	discoveryService := discovery.NewDiscoveryService()
 	chatService := chat.NewChatService(s, discoveryService)
-	authService := auth.NewAuthService(s, discoveryService, chatService)
+	authService := auth.NewAuthService(s, db, discoveryService, chatService)
 
 	// Create an instance of the app structure
 	app := NewApp(authService, chatService, discoveryService)

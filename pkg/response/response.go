@@ -1,23 +1,19 @@
 package response
 
-import "fmt"
-
-type Response struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
+type Response[T any] struct {
+	Code int `json:"code"`
+	Data T   `json:"data"`
 }
 
-func New(message string) Response {
-	return Response{Code: 200, Message: message}
+type IResponse[T any] interface {
+	Status(code int) Response[T]
 }
 
-func (r Response) Status(code int) Response {
+func New[T any](data T) Response[T] {
+	return Response[T]{Code: 200, Data: data}
+}
+
+func (r Response[T]) Status(code int) Response[T] {
 	r.Code = code
 	return r
-}
-
-func (r Response) ToString() string {
-	resp := fmt.Sprintf(`{"code":%d,"message":"%s"}`, r.Code, r.Message)
-
-	return resp
 }

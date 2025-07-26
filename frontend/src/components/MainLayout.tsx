@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { twMerge } from "tailwind-merge";
+import { Toaster } from "./ui/sonner";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -15,6 +16,7 @@ export default function MainLayout({ children, className }: MainLayoutProps) {
       )}
     >
       {children}
+      <Toaster richColors />
     </main>
   );
 }
