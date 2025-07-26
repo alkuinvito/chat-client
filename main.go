@@ -1,9 +1,9 @@
 package main
 
 import (
-	"chat-client/internal/auth"
 	"chat-client/internal/chat"
 	"chat-client/internal/discovery"
+	"chat-client/internal/user"
 	"chat-client/pkg/db"
 	"chat-client/pkg/store"
 	"embed"
@@ -26,10 +26,10 @@ func main() {
 	// Instantiate services
 	discoveryService := discovery.NewDiscoveryService()
 	chatService := chat.NewChatService(s, discoveryService)
-	authService := auth.NewAuthService(s, db, discoveryService, chatService)
+	userService := user.NewUserService(s, db, discoveryService, chatService)
 
 	// Create an instance of the app structure
-	app := NewApp(authService, chatService, discoveryService)
+	app := NewApp(userService, chatService, discoveryService)
 
 	// Create application with options
 	err := wails.Run(&options.App{
@@ -43,9 +43,9 @@ func main() {
 		OnStartup:        app.startup,
 		Bind: []any{
 			app,
-			authService,
 			chatService,
 			discoveryService,
+			userService,
 		},
 	})
 

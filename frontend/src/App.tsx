@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { GetDefaultUser } from "../wailsjs/go/auth/AuthService";
+import { GetDefaultUser } from "../wailsjs/go/user/UserService";
 import type { TProfileSchema, TResponseSchema } from "@/models";
 import { useNavigate } from "react-router";
 import MainLayout from "@/components/MainLayout";

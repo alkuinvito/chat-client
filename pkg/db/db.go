@@ -1,7 +1,7 @@
 package db
 
 import (
-	"chat-client/internal/auth"
+	"chat-client/internal/user"
 	"log"
 
 	"github.com/glebarez/sqlite"
@@ -15,10 +15,10 @@ func NewDB() *gorm.DB {
 	}
 
 	// do auto migrations
-	err = db.Find(&auth.UserModel{}).Error
+	err = db.Find(&user.UserModel{}).Error
 	if err != nil {
 		log.Println(err)
-		db.AutoMigrate(&auth.UserModel{})
+		db.AutoMigrate(&user.UserModel{})
 	}
 
 	return db

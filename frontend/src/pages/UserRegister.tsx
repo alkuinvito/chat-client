@@ -8,7 +8,7 @@ import {
   type TResponseSchema,
 } from "@/models";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Register } from "../../wailsjs/go/auth/AuthService";
+import { Register } from "../../wailsjs/go/user/UserService";
 import MainLayout from "@/components/MainLayout";
 import {
   Form,

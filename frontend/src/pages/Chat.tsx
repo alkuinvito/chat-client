@@ -1,8 +1,8 @@
-import { auth, chat } from "../../wailsjs/go/models";
+import { chat } from "../../wailsjs/go/models";
 import MainLayout from "@/components/MainLayout";
 import ChatList from "@/components/ChatList";
 import { useEffect, useState } from "react";
-import { GetProfile } from "../../wailsjs/go/auth/AuthService";
+import { GetProfile } from "../../wailsjs/go/user/UserService";
 import ChatRoom from "@/components/ChatRoom";
 import type { TProfileSchema, TResponseSchema } from "@/models";
 import { LogInfo } from "../../wailsjs/runtime/runtime";

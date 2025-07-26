@@ -1,22 +1,3 @@
-export namespace auth {
-	
-	export class UserProfile {
-	    id: string;
-	    username: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new UserProfile(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.username = source["username"];
-	    }
-	}
-
-}
-
 export namespace chat {
 	
 	export class ChatMessage {
@@ -84,18 +65,18 @@ export namespace response {
 		    return a;
 		}
 	}
-	export class Response_chat_client_internal_auth_UserProfile_ {
+	export class Response_chat_client_internal_user_UserProfile_ {
 	    code: number;
-	    data: auth.UserProfile;
+	    data: user.UserProfile;
 	
 	    static createFrom(source: any = {}) {
-	        return new Response_chat_client_internal_auth_UserProfile_(source);
+	        return new Response_chat_client_internal_user_UserProfile_(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.code = source["code"];
-	        this.data = this.convertValues(source["data"], auth.UserProfile);
+	        this.data = this.convertValues(source["data"], user.UserProfile);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -128,6 +109,25 @@ export namespace response {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.code = source["code"];
 	        this.data = source["data"];
+	    }
+	}
+
+}
+
+export namespace user {
+	
+	export class UserProfile {
+	    id: string;
+	    username: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UserProfile(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.username = source["username"];
 	    }
 	}
 

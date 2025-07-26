@@ -1,4 +1,4 @@
-package auth
+package user
 
 import (
 	"chat-client/internal/chat"
@@ -13,7 +13,7 @@ import (
 	"gorm.io/gorm"
 )
 
-type AuthService struct {
+type UserService struct {
 	chatService      *chat.ChatService
 	ctx              context.Context
 	db               *gorm.DB
@@ -21,7 +21,7 @@ type AuthService struct {
 	s                *store.Store
 }
 
-type IAuthService interface {
+type IUserService interface {
 	GetDefaultUser() response.Response[UserProfile]
 	GetProfile() response.Response[UserProfile]
 	Login(username, password string) response.Response[UserProfile]
@@ -29,8 +29,8 @@ type IAuthService interface {
 	Startup(ctx context.Context)
 }
 
-func NewAuthService(s *store.Store, db *gorm.DB, discoveryService *discovery.DiscoveryService, chatService *chat.ChatService) *AuthService {
-	return &AuthService{
+func NewUserService(s *store.Store, db *gorm.DB, discoveryService *discovery.DiscoveryService, chatService *chat.ChatService) *UserService {
+	return &UserService{
 		s:                s,
 		db:               db,
 		discoveryService: discoveryService,
@@ -38,7 +38,7 @@ func NewAuthService(s *store.Store, db *gorm.DB, discoveryService *discovery.Dis
 	}
 }
 
-func (as *AuthService) GetDefaultUser() response.Response[UserProfile] {
+func (as *UserService) GetDefaultUser() response.Response[UserProfile] {
 	var result UserModel
 
 	err := as.db.First(&result).Error
@@ -50,7 +50,7 @@ func (as *AuthService) GetDefaultUser() response.Response[UserProfile] {
 	return response.New(result.toProfile())
 }
 
-func (as *AuthService) GetProfile() response.Response[UserProfile] {
+func (as *UserService) GetProfile() response.Response[UserProfile] {
 	var result UserModel
 
 	username, err := as.s.Get("username")
@@ -63,7 +63,7 @@ func (as *AuthService) GetProfile() response.Response[UserProfile] {
 
 }
 
-func (as *AuthService) Login(username, password string) response.Response[UserProfile] {
+func (as *UserService) Login(username, password string) response.Response[UserProfile] {
 	var result UserModel
 
 	err := as.db.First(&result).Error
@@ -83,7 +83,7 @@ func (as *AuthService) Login(username, password string) response.Response[UserPr
 	return response.New(result.toProfile())
 }
 
-func (as *AuthService) Register(username, password string) response.Response[UserProfile] {
+func (as *UserService) Register(username, password string) response.Response[UserProfile] {
 	var user UserModel
 
 	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -116,6 +116,6 @@ func (as *AuthService) Register(username, password string) response.Response[Use
 	return response.New(user.toProfile())
 }
 
-func (as *AuthService) Startup(ctx context.Context) {
+func (as *UserService) Startup(ctx context.Context) {
 	as.ctx = ctx
 }
