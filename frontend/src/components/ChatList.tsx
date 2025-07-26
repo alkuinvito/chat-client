@@ -10,6 +10,7 @@ interface ChatListProps {
 
 export default function ChatList({ user, onSelect }: ChatListProps) {
   const [rooms, setRooms] = useState<chat.ChatRoom[]>();
+  const [current, setCurrent] = useState<chat.ChatRoom>();
   const [isLoading, setIsLoading] = useState(false);
 
   const getRooms = () => {
@@ -26,7 +27,7 @@ export default function ChatList({ user, onSelect }: ChatListProps) {
   };
 
   return (
-    <div className="grow flex flex-col max-w-[280px] h-full bg-neutral-800">
+    <div className="flex flex-col min-w-[280px] h-full bg-neutral-800">
       <div className="flex items-center w-full h-12 border-b border-neutral-900">
         <div className="grow flex items-center px-4 h-full text-left border-r border-neutral-900">
           <span className="select-none">{user.username}</span>
@@ -49,8 +50,12 @@ export default function ChatList({ user, onSelect }: ChatListProps) {
           {rooms.map((room) => (
             <li key={room.ip}>
               <button
-                className="grid px-4 py-2 w-full text-left hover:bg-neutral-700 transition-colors"
-                onClick={() => onSelect(room)}
+                className="grid px-4 py-2 w-full text-left enabled:hover:bg-neutral-700 transition-colors disabled:bg-neutral-700"
+                onClick={() => {
+                  setCurrent(room);
+                  onSelect(room);
+                }}
+                disabled={room == current}
               >
                 <span className="select-none line-clamp-1">
                   {room.peer_name}

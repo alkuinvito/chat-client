@@ -42,6 +42,13 @@ export default function ChatRoom({ user, room }: ChatRoomProps) {
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e.currentTarget.value);
+    }
+  };
+
   useEffect(() => {
     EventsOn("msg:new", (ev) => {
       const message = JSON.parse(ev) as ChatMessage;
@@ -51,30 +58,18 @@ export default function ChatRoom({ user, room }: ChatRoomProps) {
 
   return (
     <div className="grow h-full flex flex-col">
-      <ul className="grow overflow-y-auto p-2">
+      <ul className="grow overflow-y-auto p-2 text-left">
         {messages &&
           messages.map((message, i) =>
-            message.sender == user.username ? (
-              <li
-                key={`msg-${i}`}
-                className="flex flex-col items-end w-full my-2 text-right"
-              >
-                <span className="text-xs text-neutral-300">
-                  {message.sender}
-                </span>
-                <span className="w-min max-w-1/2 p-2 bg-neutral-800 rounded-lg">
+            message.sender === user.username ? (
+              <li key={`msg-${i}`} className={"flex justify-end w-full mb-1"}>
+                <span className="max-w-1/2 px-2 py-1 bg-neutral-800 rounded-lg whitespace-pre-wrap">
                   {message.message}
                 </span>
               </li>
             ) : (
-              <li
-                key={`msg-${i}`}
-                className="flex flex-col w-full my-2 text-left"
-              >
-                <span className="text-xs text-neutral-300">
-                  {message.sender}
-                </span>
-                <span className="w-min max-w-1/2 p-2 bg-neutral-800 rounded-lg">
+              <li key={`msg-${i}`} className="w-full mb-1">
+                <span className="max-w-1/2 px-2 py-1 bg-neutral-800 rounded-lg whitespace-pre-wrap">
                   {message.message}
                 </span>
               </li>
@@ -92,8 +87,13 @@ export default function ChatRoom({ user, room }: ChatRoomProps) {
           onInput={(e) => {
             setMsg(e.currentTarget.value);
           }}
+          onKeyDown={handleKeyDown}
         />
-        <Button variant="secondary" onClick={() => handleSubmit(msg)}>
+        <Button
+          variant="secondary"
+          onClick={() => handleSubmit(msg)}
+          disabled={msg.length < 1 || msg.length > 250}
+        >
           Send
         </Button>
       </div>
