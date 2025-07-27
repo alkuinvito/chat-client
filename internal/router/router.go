@@ -1,57 +1,40 @@
 package router
 
 import (
-	"chat-client/internal/discovery"
-	"fmt"
-	"net/http"
+	"chat-client/internal/chat"
+	"chat-client/internal/user"
+
+	"github.com/bytedance/sonic"
+	"github.com/gofiber/fiber/v2"
 )
 
-type RouterConfig struct {
-	addr   string
-	prefix string
-}
-
 type Router struct {
-	handler *http.ServeMux
-	server  *http.Server
+	app            *fiber.App
+	chatController *chat.ChatController
+	userController *user.UserController
 }
 
 type IRouter interface {
-	Handle() error
-	Use(path string, handler http.Handler) *Router
+	Handle()
 }
 
-func DefaultConfig() *RouterConfig {
-	addr := fmt.Sprintf(":%d", discovery.SVC_PORT)
-	prefix := "/api"
-
-	return &RouterConfig{addr, prefix}
-}
-
-func NewRouter(config *RouterConfig) *Router {
-	addr := config.addr
-	handler := http.NewServeMux()
-
-	server := http.Server{
-		Addr:    addr,
-		Handler: handler,
+func DefaultConfig() fiber.Config {
+	return fiber.Config{
+		JSONEncoder: sonic.Marshal,
+		JSONDecoder: sonic.Unmarshal,
 	}
-
-	if config.prefix != "" {
-		withPrefix := http.NewServeMux()
-		withPrefix.Handle(config.prefix+"/", http.StripPrefix(config.prefix, handler))
-
-		server.Handler = withPrefix
-	}
-
-	return &Router{handler, &server}
 }
 
-func (r *Router) Handle() error {
-	return r.server.ListenAndServe()
+func NewRouter(app *fiber.App, chatController *chat.ChatController, userController *user.UserController) *Router {
+	return &Router{app, chatController, userController}
 }
 
-func (r *Router) Use(path string, handler http.Handler) *Router {
-	r.handler.Handle(path+"/", http.StripPrefix(path, handler))
-	return r
+func (r *Router) Handle() {
+	api := r.app.Group("/api")
+
+	chatRouter := api.Group("/chat")
+	chatRouter.Post("/send", r.chatController.CreateChat)
+
+	userRouter := api.Group("/user")
+	userRouter.Post("/pair", r.userController.PairUser)
 }

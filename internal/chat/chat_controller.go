@@ -1,8 +1,9 @@
 package chat
 
 import (
-	"encoding/json"
 	"net/http"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 type ChatController struct {
@@ -10,35 +11,22 @@ type ChatController struct {
 }
 
 type IChatController interface {
-	CreateChat() func(w http.ResponseWriter, r *http.Request)
-	Routes() http.Handler
+	CreateChat(c *fiber.Ctx) error
 }
 
 func NewChatController(chatService *ChatService) *ChatController {
 	return &ChatController{chatService}
 }
 
-func (cc *ChatController) CreateChat() func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var payload ChatMessage
-		decoder := json.NewDecoder(r.Body)
-		err := decoder.Decode(&payload)
-		if err != nil {
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
-			return
-		}
+func (cc *ChatController) CreateChat(c *fiber.Ctx) error {
+	var payload ChatMessage
 
-		cc.chatService.CreateChat(payload)
-
-		w.Header().Add("content-type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"received"}`))
+	err := c.BodyParser(&payload)
+	if err != nil {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "invalid chat message"})
 	}
-}
 
-func (cc *ChatController) Routes() http.Handler {
-	chatRoute := http.NewServeMux()
-	chatRoute.HandleFunc("POST /", cc.CreateChat())
+	cc.chatService.CreateChat(payload)
 
-	return chatRoute
+	return c.JSON(fiber.Map{"status": "message received successfully"})
 }

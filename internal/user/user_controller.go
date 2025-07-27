@@ -1,8 +1,9 @@
 package user
 
 import (
-	"encoding/json"
 	"net/http"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 type UserController struct {
@@ -10,45 +11,29 @@ type UserController struct {
 }
 
 type IUserController interface {
-	PairUser() func(w http.ResponseWriter, r *http.Request)
-	Routes() http.Handler
+	PairUser(c *fiber.Ctx) error
 }
 
 func NewUserController(userService *UserService) *UserController {
 	return &UserController{userService}
 }
 
-func (uc *UserController) PairUser() func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var input RequestPairSchema
-		decoder := json.NewDecoder(r.Body)
-		err := decoder.Decode(&input)
-		if err != nil {
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
-			return
-		}
+func (uc *UserController) PairUser(c *fiber.Ctx) error {
+	var input RequestPairSchema
 
-		pubkey, err := uc.userService.PairUser(input)
-		if err != nil {
-			http.Error(w, "Unknown error", http.StatusInternalServerError)
-			return
-		}
-
-		res, err := json.Marshal(&pubkey)
-		if err != nil {
-			http.Error(w, "Unknown error", http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Add("content-type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(res)
+	err := c.BodyParser(&input)
+	if err != nil {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "invalid request pair schema"})
 	}
-}
 
-func (uc *UserController) Routes() http.Handler {
-	userRoute := http.NewServeMux()
-	userRoute.HandleFunc("POST /pair", uc.PairUser())
+	pubkey, err := uc.userService.PairUser(input)
+	if err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "unknown error"})
+	}
 
-	return userRoute
+	response := ResponsePairSchema{
+		Pubkey: pubkey.Pubkey,
+	}
+
+	return c.JSON(response)
 }

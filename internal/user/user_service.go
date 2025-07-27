@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"chat-client/internal/chat"
 	"chat-client/internal/discovery"
-	"chat-client/internal/router"
 	"chat-client/pkg/encryption"
 	"chat-client/pkg/response"
 	"chat-client/pkg/store"
@@ -18,6 +17,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/oklog/ulid/v2"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -29,7 +29,7 @@ type UserService struct {
 	db               *gorm.DB
 	discoveryService *discovery.DiscoveryService
 	s                *store.Store
-	router           *router.Router
+	router           *fiber.App
 }
 
 type IUserService interface {
@@ -44,7 +44,7 @@ type IUserService interface {
 	Startup(ctx context.Context)
 }
 
-func NewUserService(s *store.Store, db *gorm.DB, router *router.Router, discoveryService *discovery.DiscoveryService, chatService *chat.ChatService) *UserService {
+func NewUserService(s *store.Store, db *gorm.DB, router *fiber.App, discoveryService *discovery.DiscoveryService, chatService *chat.ChatService) *UserService {
 	return &UserService{
 		s:                s,
 		db:               db,
@@ -165,7 +165,7 @@ func (us *UserService) Login(username, password string) response.Response[UserPr
 	go us.discoveryService.BroadcastService(result.ID, username)
 
 	// start chat server
-	go us.router.Handle()
+	go us.router.Listen(fmt.Sprintf(":%d", discovery.SVC_PORT))
 
 	return response.New(result.toProfile())
 }

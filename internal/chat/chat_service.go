@@ -34,7 +34,7 @@ func (cs *ChatService) CreateChat(payload ChatMessage) {
 }
 
 func (cs *ChatService) SendMessage(peer discovery.PeerModel, message ChatMessage) response.Response[string] {
-	url := fmt.Sprintf("http://%s:%d/api/chat", peer.IP, discovery.SVC_PORT)
+	url := fmt.Sprintf("http://%s:%d/api/chat/send", peer.IP, discovery.SVC_PORT)
 
 	payload, err := json.Marshal(message)
 	if err != nil {

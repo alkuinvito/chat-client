@@ -9,6 +9,7 @@ import (
 	"chat-client/pkg/store"
 	"embed"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
@@ -24,21 +25,21 @@ func main() {
 	// Setup sqlite db
 	db := db.NewDB()
 
-	// Init router
-	mainRouter := router.NewRouter(router.DefaultConfig())
+	// Init fiber
+	fiberApp := fiber.New(router.DefaultConfig())
 
 	// Init services
 	discoveryService := discovery.NewDiscoveryService(s)
 	chatService := chat.NewChatService(s, discoveryService)
-	userService := user.NewUserService(s, db, mainRouter, discoveryService, chatService)
+	userService := user.NewUserService(s, db, fiberApp, discoveryService, chatService)
 
 	// Init controllers
 	chatController := chat.NewChatController(chatService)
 	userController := user.NewUserController(userService)
 
-	// Link controllers
-	mainRouter.Use("/chat", chatController.Routes())
-	mainRouter.Use("/user", userController.Routes())
+	// Init router
+	mainRouter := router.NewRouter(fiberApp, chatController, userController)
+	mainRouter.Handle()
 
 	// Create an instance of the app structure
 	app := NewApp(s, userService, chatService, discoveryService)
