@@ -1,25 +1,33 @@
-import { chat } from "../../wailsjs/go/models";
+import type { discovery } from "../../wailsjs/go/models";
 import { useState } from "react";
-import type { TChatRoom, TProfileSchema, TResponseSchema } from "@/models";
-import { GetRooms } from "../../wailsjs/go/chat/ChatService";
-import { RotateCw } from "lucide-react";
+import type { TProfileSchema, TResponseSchema } from "@/models";
+import { GetPeers } from "../../wailsjs/go/discovery/DiscoveryService";
+import { Info, RotateCw } from "lucide-react";
+import { toast } from "sonner";
 
-interface ChatListProps {
+interface PeerListProps {
   user: TProfileSchema;
-  onSelect: (room: chat.ChatRoom) => void;
+  onSelect: (peer: discovery.PeerModel) => void;
 }
 
-export default function ChatList({ user, onSelect }: ChatListProps) {
-  const [rooms, setRooms] = useState<chat.ChatRoom[]>();
-  const [current, setCurrent] = useState<chat.ChatRoom>();
+export default function PeerList({ user, onSelect }: PeerListProps) {
+  const [rooms, setRooms] = useState<discovery.PeerModel[]>();
+  const [current, setCurrent] = useState<discovery.PeerModel>();
   const [isLoading, setIsLoading] = useState(false);
 
   const getRooms = () => {
     setIsLoading(true);
 
-    GetRooms()
-      .then((res: TResponseSchema<TChatRoom[]>) => {
-        setRooms(res.data);
+    GetPeers()
+      .then((res: TResponseSchema<discovery.PeerModel[]>) => {
+        switch (res.code) {
+          case 200:
+            setRooms(res.data);
+            break;
+          default:
+            toast.error("Error when searching peers", { icon: <Info /> });
+            break;
+        }
       })
       .catch((e) => {})
       .finally(() => {
@@ -59,7 +67,7 @@ export default function ChatList({ user, onSelect }: ChatListProps) {
                 disabled={room == current}
               >
                 <span className="select-none line-clamp-1">
-                  {room.peer_name}
+                  {room.username}
                 </span>
                 <span className="select-none line-clamp-1 text-xs text-neutral-400">
                   {room.ip}

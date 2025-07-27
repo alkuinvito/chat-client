@@ -9,10 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
-	"sync"
 
-	"github.com/hashicorp/mdns"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -24,8 +21,7 @@ type ChatService struct {
 
 type IChatService interface {
 	CreateChat(payload ChatMessage)
-	GetRooms() response.Response[[]ChatRoom]
-	SendMessage(room ChatRoom, message ChatMessage) response.Response[string]
+	SendMessage(peer discovery.PeerModel, message ChatMessage) response.Response[string]
 	Startup(ctx context.Context)
 }
 
@@ -37,43 +33,8 @@ func (cs *ChatService) CreateChat(payload ChatMessage) {
 	runtime.EventsEmit(cs.ctx, "msg:new", fmt.Sprintf(`{"sender":"%s","message":"%s"}`, payload.Sender, payload.Message))
 }
 
-func (cs *ChatService) GetRooms() response.Response[[]ChatRoom] {
-	entries := make(chan *mdns.ServiceEntry, 4)
-	var result []ChatRoom
-	var wg sync.WaitGroup
-
-	username, err := cs.s.GetString("username")
-	if err != nil {
-		return response.New(result).Status(500)
-	}
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for entry := range entries {
-			parsed := strings.Split(entry.Name, ".")
-			if len(parsed) == 0 {
-				continue
-			}
-
-			peerName := parsed[0]
-			if peerName == username {
-				continue
-			}
-
-			result = append(result, ChatRoom{PeerName: peerName, IP: entry.AddrV4.String()})
-		}
-	}()
-
-	go cs.discoveryService.QueryService(entries)
-
-	wg.Wait()
-
-	return response.New(result)
-}
-
-func (cs *ChatService) SendMessage(room ChatRoom, message ChatMessage) response.Response[string] {
-	url := fmt.Sprintf("http://%s:%d/api/chat", room.IP, discovery.SVC_PORT)
+func (cs *ChatService) SendMessage(peer discovery.PeerModel, message ChatMessage) response.Response[string] {
+	url := fmt.Sprintf("http://%s:%d/api/chat", peer.IP, discovery.SVC_PORT)
 
 	payload, err := json.Marshal(message)
 	if err != nil {

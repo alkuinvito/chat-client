@@ -28,15 +28,17 @@ func main() {
 	mainRouter := router.NewRouter(router.DefaultConfig())
 
 	// Init services
-	discoveryService := discovery.NewDiscoveryService()
+	discoveryService := discovery.NewDiscoveryService(s)
 	chatService := chat.NewChatService(s, discoveryService)
 	userService := user.NewUserService(s, db, mainRouter, discoveryService, chatService)
 
 	// Init controllers
 	chatController := chat.NewChatController(chatService)
+	userController := user.NewUserController(userService)
 
 	// Link controllers
 	mainRouter.Use("/chat", chatController.Routes())
+	mainRouter.Use("/user", userController.Routes())
 
 	// Create an instance of the app structure
 	app := NewApp(s, userService, chatService, discoveryService)

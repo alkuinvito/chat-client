@@ -35,7 +35,7 @@ function UserRegister() {
     Register(data.username, data.password)
       .then((res: TResponseSchema<TProfileSchema>) => {
         if (res.code === 200) {
-          navigate("/chat");
+          navigate("/login");
         } else {
           toast.error("Unknown error", {
             icon: <Info />,

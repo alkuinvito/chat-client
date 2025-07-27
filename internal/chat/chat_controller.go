@@ -30,6 +30,7 @@ func (cc *ChatController) CreateChat() func(w http.ResponseWriter, r *http.Reque
 
 		cc.chatService.CreateChat(payload)
 
+		w.Header().Add("content-type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status":"received"}`))
 	}
@@ -37,7 +38,7 @@ func (cc *ChatController) CreateChat() func(w http.ResponseWriter, r *http.Reque
 
 func (cc *ChatController) Routes() http.Handler {
 	chatRoute := http.NewServeMux()
-	chatRoute.HandleFunc("POST /chat", cc.CreateChat())
+	chatRoute.HandleFunc("POST /", cc.CreateChat())
 
 	return chatRoute
 }

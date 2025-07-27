@@ -1,21 +1,31 @@
-import { chat } from "../../wailsjs/go/models";
+import type { chat, discovery } from "../../wailsjs/go/models";
 import MainLayout from "@/components/MainLayout";
-import ChatList from "@/components/ChatList";
+import PeerList from "@/components/PeerList";
 import { useEffect, useState } from "react";
-import { GetProfile } from "../../wailsjs/go/user/UserService";
+import { GetProfile, RequestPair } from "../../wailsjs/go/user/UserService";
 import ChatRoom from "@/components/ChatRoom";
 import type { TProfileSchema, TResponseSchema } from "@/models";
-import { LogInfo } from "../../wailsjs/runtime/runtime";
 import { useNavigate } from "react-router";
 
 export default function Chat() {
   const [user, setUser] = useState<TProfileSchema>();
-  const [room, setRoom] = useState<chat.ChatRoom>();
+  const [peer, setPeer] = useState<discovery.PeerModel>();
 
   const navigate = useNavigate();
 
-  const handleSelectRoom = (selected: chat.ChatRoom) => {
-    setRoom(selected);
+  const handleSelect = (selected: discovery.PeerModel) => {
+    RequestPair(selected)
+      .then((res: TResponseSchema<string>) => {
+        switch (res.code) {
+          case 200:
+            alert(res.data);
+            break;
+          default:
+            alert(res.data);
+            break;
+        }
+      })
+      .catch((e) => {});
   };
 
   useEffect(() => {
@@ -37,8 +47,8 @@ export default function Chat() {
     <MainLayout className="flex">
       {user && (
         <>
-          <ChatList user={user} onSelect={handleSelectRoom} />
-          {room && <ChatRoom user={user} room={room} />}
+          <PeerList user={user} onSelect={handleSelect} />
+          {peer && <ChatRoom user={user} peer={peer} />}
         </>
       )}
     </MainLayout>

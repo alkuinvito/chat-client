@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { GetDefaultUser } from "../wailsjs/go/user/UserService";
+import { GetProfile } from "../wailsjs/go/user/UserService";
 import type { TProfileSchema, TResponseSchema } from "@/models";
 import { useNavigate } from "react-router";
 import MainLayout from "@/components/MainLayout";
@@ -9,7 +9,7 @@ function App() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    GetDefaultUser().then((res: TResponseSchema<TProfileSchema>) => {
+    GetProfile().then((res: TResponseSchema<TProfileSchema>) => {
       if (res.code === 200) {
         if (res.data.id) {
           navigate("/login");

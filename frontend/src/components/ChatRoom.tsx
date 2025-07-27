@@ -1,5 +1,5 @@
 import type { TProfileSchema, TResponseSchema } from "@/models";
-import { chat } from "../../wailsjs/go/models";
+import type { chat, discovery } from "../../wailsjs/go/models";
 import { EventsOn, LogInfo } from "../../wailsjs/runtime/runtime";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "./ui/button";
@@ -9,7 +9,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 
 interface ChatRoomProps {
   user: TProfileSchema;
-  room: chat.ChatRoom;
+  peer: discovery.PeerModel;
 }
 
 interface ChatMessage {
@@ -17,7 +17,7 @@ interface ChatMessage {
   message: string;
 }
 
-export default function ChatRoom({ user, room }: ChatRoomProps) {
+export default function ChatRoom({ user, peer }: ChatRoomProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [message, setMessage] = useState("");
 
@@ -37,7 +37,7 @@ export default function ChatRoom({ user, room }: ChatRoomProps) {
         message: input,
       };
 
-      SendMessage(room, message)
+      SendMessage(peer, message)
         .then((res: TResponseSchema<string>) => {
           if (res.code != 200) {
             LogInfo(`Error ${res.code.toString()} - ${res.code}`);

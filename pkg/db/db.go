@@ -19,6 +19,7 @@ func NewDB() *gorm.DB {
 	if err != nil {
 		log.Println(err)
 		db.AutoMigrate(&user.UserModel{})
+		db.AutoMigrate(&user.ContactModel{})
 	}
 
 	return db

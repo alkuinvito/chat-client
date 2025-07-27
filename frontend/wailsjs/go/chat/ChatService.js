@@ -6,10 +6,6 @@ export function CreateChat(arg1) {
   return window['go']['chat']['ChatService']['CreateChat'](arg1);
 }
 
-export function GetRooms() {
-  return window['go']['chat']['ChatService']['GetRooms']();
-}
-
 export function SendMessage(arg1, arg2) {
   return window['go']['chat']['ChatService']['SendMessage'](arg1, arg2);
 }

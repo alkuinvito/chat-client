@@ -14,17 +14,24 @@ export namespace chat {
 	        this.message = source["message"];
 	    }
 	}
-	export class ChatRoom {
-	    peer_name: string;
+
+}
+
+export namespace discovery {
+	
+	export class PeerModel {
+	    id: string;
+	    username: string;
 	    ip: string;
 	
 	    static createFrom(source: any = {}) {
-	        return new ChatRoom(source);
+	        return new PeerModel(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.peer_name = source["peer_name"];
+	        this.id = source["id"];
+	        this.username = source["username"];
 	        this.ip = source["ip"];
 	    }
 	}
@@ -33,18 +40,18 @@ export namespace chat {
 
 export namespace response {
 	
-	export class Response___chat_client_internal_chat_ChatRoom_ {
+	export class Response___chat_client_internal_discovery_PeerModel_ {
 	    code: number;
-	    data: chat.ChatRoom[];
+	    data: discovery.PeerModel[];
 	
 	    static createFrom(source: any = {}) {
-	        return new Response___chat_client_internal_chat_ChatRoom_(source);
+	        return new Response___chat_client_internal_discovery_PeerModel_(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.code = source["code"];
-	        this.data = this.convertValues(source["data"], chat.ChatRoom);
+	        this.data = this.convertValues(source["data"], discovery.PeerModel);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -116,6 +123,34 @@ export namespace response {
 
 export namespace user {
 	
+	export class RequestPairSchema {
+	    id: string;
+	    username: string;
+	    pubkey: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RequestPairSchema(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.username = source["username"];
+	        this.pubkey = source["pubkey"];
+	    }
+	}
+	export class ResponsePairSchema {
+	    pubkey: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ResponsePairSchema(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.pubkey = source["pubkey"];
+	    }
+	}
 	export class UserProfile {
 	    id: string;
 	    username: string;

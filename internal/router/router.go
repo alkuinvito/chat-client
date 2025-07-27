@@ -52,6 +52,6 @@ func (r *Router) Handle() error {
 }
 
 func (r *Router) Use(path string, handler http.Handler) *Router {
-	r.handler.Handle(path, handler)
+	r.handler.Handle(path+"/", http.StripPrefix(path, handler))
 	return r
 }
