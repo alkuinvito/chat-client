@@ -7,7 +7,11 @@ type Store struct {
 }
 
 type IStore interface {
+	Clear()
+	Delete(key string)
 	Get(key string) (string, error)
+	GetString(key string) (string, error)
+	Keys() []string
 	Set(key, val string)
 }
 
@@ -16,7 +20,14 @@ func NewStore() *Store {
 	return &Store{m}
 }
 
-func (s *Store) Clean(key string) {
+func (s *Store) Clear() {
+	keys := s.Keys()
+	for _, k := range keys {
+		s.Delete(k)
+	}
+}
+
+func (s *Store) Delete(key string) {
 	val, ok := s.m[key]
 	if !ok {
 		return
@@ -47,6 +58,15 @@ func (s *Store) GetString(key string) (string, error) {
 	}
 
 	return string(val), nil
+}
+
+func (s *Store) Keys() []string {
+	keys := make([]string, 0, len(s.m))
+	for k := range s.m {
+		keys = append(keys, k)
+	}
+
+	return keys
 }
 
 func (s *Store) Set(key string, val []byte) {
