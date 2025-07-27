@@ -25,14 +25,21 @@ func AESDecrypt(key, ciphertext []byte) ([]byte, error) {
 		return nil, errors.New("failed to create gcm")
 	}
 
-	nonce := make([]byte, gcm.NonceSize())
+	nonceSize := gcm.NonceSize()
+	if len(ciphertext) < nonceSize {
+		return nil, errors.New("invalid nonce")
+	}
 
-	payload, err := gcm.Open(nil, nonce, ciphertext, nil)
+	// retrieve nonce from ciphertext
+	nonce := ciphertext[:nonceSize]
+	payload := ciphertext[nonceSize:]
+
+	decrypted, err := gcm.Open(nil, nonce, payload, nil)
 	if err != nil {
 		return nil, errors.New("failed to decrypt data")
 	}
 
-	return payload, nil
+	return decrypted, nil
 }
 
 func AESEncrypt(key, payload []byte) ([]byte, error) {
@@ -52,6 +59,10 @@ func AESEncrypt(key, payload []byte) ([]byte, error) {
 	}
 
 	ciphertext := aesgcm.Seal(nil, nonce, payload, nil)
+
+	// store nonce inside ciphertext
+	ciphertext = append(nonce, ciphertext...)
+
 	return ciphertext, nil
 }
 
@@ -125,8 +136,5 @@ func PasswordEncrypt(password, payload []byte) ([]byte, error) {
 	encrypted := append(salt, ciphertext...)
 
 	// encode to base64
-	var encoded []byte
-	base64.StdEncoding.Encode(encoded, encrypted)
-
-	return encoded, nil
+	return []byte(base64.StdEncoding.EncodeToString(encrypted)), nil
 }

@@ -16,6 +16,21 @@ func NewStore() *Store {
 	return &Store{m}
 }
 
+func (s *Store) Clean(key string) {
+	val, ok := s.m[key]
+	if !ok {
+		return
+	}
+
+	// zero-ing unused value
+	for i := range val {
+		val[i] = 0
+	}
+
+	// delete key
+	delete(s.m, key)
+}
+
 func (s *Store) Get(key string) ([]byte, error) {
 	val, ok := s.m[key]
 	if !ok {
