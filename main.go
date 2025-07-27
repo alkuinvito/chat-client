@@ -3,6 +3,7 @@ package main
 import (
 	"chat-client/internal/chat"
 	"chat-client/internal/discovery"
+	"chat-client/internal/router"
 	"chat-client/internal/user"
 	"chat-client/pkg/db"
 	"chat-client/pkg/store"
@@ -23,10 +24,19 @@ func main() {
 	// Setup sqlite db
 	db := db.NewDB()
 
-	// Instantiate services
+	// Init router
+	mainRouter := router.NewRouter(router.DefaultConfig())
+
+	// Init services
 	discoveryService := discovery.NewDiscoveryService()
 	chatService := chat.NewChatService(s, discoveryService)
-	userService := user.NewUserService(s, db, discoveryService, chatService)
+	userService := user.NewUserService(s, db, mainRouter, discoveryService, chatService)
+
+	// Init controllers
+	chatController := chat.NewChatController(chatService)
+
+	// Link controllers
+	mainRouter.Use("/chat", chatController.Routes())
 
 	// Create an instance of the app structure
 	app := NewApp(userService, chatService, discoveryService)

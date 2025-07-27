@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router";
 import { useForm } from "react-hook-form";
-import z from "zod";
 import {
   RegisterSchema,
   TProfileSchema,
@@ -15,11 +14,12 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { Info } from "lucide-react";
 
 function UserRegister() {
   const navigate = useNavigate();
@@ -36,6 +36,10 @@ function UserRegister() {
       .then((res: TResponseSchema<TProfileSchema>) => {
         if (res.code === 200) {
           navigate("/chat");
+        } else {
+          toast.error("Unknown error", {
+            icon: <Info />,
+          });
         }
       })
       .catch((e) => {});

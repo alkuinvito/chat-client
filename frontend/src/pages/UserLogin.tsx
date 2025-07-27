@@ -14,7 +14,6 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -46,6 +45,12 @@ function UserLogin() {
             toast.error("Username and/or password is incorrect", {
               icon: <Info />,
             });
+            break;
+          default:
+            toast.error("Unknown error", {
+              icon: <Info />,
+            });
+            break;
         }
       })
       .catch((e) => {});

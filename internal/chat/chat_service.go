@@ -12,9 +12,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
-
 	"github.com/hashicorp/mdns"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type ChatService struct {
@@ -24,14 +23,18 @@ type ChatService struct {
 }
 
 type IChatService interface {
+	CreateChat(payload ChatMessage)
 	GetRooms() response.Response[[]ChatRoom]
 	SendMessage(room ChatRoom, message ChatMessage) response.Response[string]
-	ServeChat()
 	Startup(ctx context.Context)
 }
 
 func NewChatService(s *store.Store, discoveryService *discovery.DiscoveryService) *ChatService {
 	return &ChatService{s: s}
+}
+
+func (cs *ChatService) CreateChat(payload ChatMessage) {
+	runtime.EventsEmit(cs.ctx, "msg:new", fmt.Sprintf(`{"sender":"%s","message":"%s"}`, payload.Sender, payload.Message))
 }
 
 func (cs *ChatService) GetRooms() response.Response[[]ChatRoom] {
@@ -70,7 +73,7 @@ func (cs *ChatService) GetRooms() response.Response[[]ChatRoom] {
 }
 
 func (cs *ChatService) SendMessage(room ChatRoom, message ChatMessage) response.Response[string] {
-	url := fmt.Sprintf("http://%s:%d/chat", room.IP, discovery.SVC_PORT)
+	url := fmt.Sprintf("http://%s:%d/api/chat", room.IP, discovery.SVC_PORT)
 
 	payload, err := json.Marshal(message)
 	if err != nil {
@@ -87,34 +90,4 @@ func (cs *ChatService) SendMessage(room ChatRoom, message ChatMessage) response.
 
 func (cs *ChatService) Startup(ctx context.Context) {
 	cs.ctx = ctx
-}
-
-func (cs *ChatService) ServeChat() {
-	http.HandleFunc("/chat", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		var payload ChatMessage
-		decoder := json.NewDecoder(r.Body)
-		err := decoder.Decode(&payload)
-		if err != nil {
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
-			return
-		}
-
-		runtime.EventsEmit(cs.ctx, "msg:new", fmt.Sprintf(`{"sender":"%s","message":"%s"}`, payload.Sender, payload.Message))
-
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"received"}`))
-	})
-
-	go func() {
-		fmt.Printf("Server is running on: 127.0.0.1:%d\n", discovery.SVC_PORT)
-		err := http.ListenAndServe(fmt.Sprintf(":%d", discovery.SVC_PORT), nil)
-		if err != nil {
-			panic(err)
-		}
-	}()
 }

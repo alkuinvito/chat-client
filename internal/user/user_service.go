@@ -3,6 +3,7 @@ package user
 import (
 	"chat-client/internal/chat"
 	"chat-client/internal/discovery"
+	"chat-client/internal/router"
 	"chat-client/pkg/encryption"
 	"chat-client/pkg/response"
 	"chat-client/pkg/store"
@@ -20,6 +21,7 @@ type UserService struct {
 	db               *gorm.DB
 	discoveryService *discovery.DiscoveryService
 	s                *store.Store
+	router           *router.Router
 }
 
 type IUserService interface {
@@ -30,12 +32,13 @@ type IUserService interface {
 	Startup(ctx context.Context)
 }
 
-func NewUserService(s *store.Store, db *gorm.DB, discoveryService *discovery.DiscoveryService, chatService *chat.ChatService) *UserService {
+func NewUserService(s *store.Store, db *gorm.DB, router *router.Router, discoveryService *discovery.DiscoveryService, chatService *chat.ChatService) *UserService {
 	return &UserService{
 		s:                s,
 		db:               db,
 		discoveryService: discoveryService,
 		chatService:      chatService,
+		router:           router,
 	}
 }
 
@@ -47,7 +50,6 @@ func (as *UserService) GetDefaultUser() response.Response[UserProfile] {
 		return response.New(result.toProfile()).Status(404)
 	}
 
-	result.Password = ""
 	return response.New(result.toProfile())
 }
 
@@ -61,7 +63,6 @@ func (as *UserService) GetProfile() response.Response[UserProfile] {
 
 	result.Username = username
 	return response.New(result.toProfile())
-
 }
 
 func (as *UserService) Login(username, password string) response.Response[UserProfile] {
@@ -89,6 +90,12 @@ func (as *UserService) Login(username, password string) response.Response[UserPr
 
 	// store pubkey in memory
 	as.s.Set("key:public", pubkey)
+
+	// start broadcasting the service
+	go as.discoveryService.BroadcastService(username)
+
+	// start chat server
+	go as.router.Handle()
 
 	return response.New(result.toProfile())
 }
@@ -144,7 +151,7 @@ func (as *UserService) Register(username, password string) response.Response[Use
 	go as.discoveryService.BroadcastService(username)
 
 	// start chat server
-	go as.chatService.ServeChat()
+	go as.router.Handle()
 
 	return response.New(user.toProfile())
 }
