@@ -3,6 +3,7 @@ package chat
 import (
 	"bytes"
 	"chat-client/internal/discovery"
+	"chat-client/internal/user"
 	"chat-client/pkg/response"
 	"chat-client/pkg/store"
 	"context"
@@ -21,7 +22,7 @@ type ChatService struct {
 
 type IChatService interface {
 	CreateChat(payload ChatMessage)
-	SendMessage(peer discovery.PeerModel, message ChatMessage) response.Response[string]
+	SendMessage(contact user.ContactModel, message ChatMessage) response.Response[string]
 	Startup(ctx context.Context)
 }
 
@@ -33,8 +34,13 @@ func (cs *ChatService) CreateChat(payload ChatMessage) {
 	runtime.EventsEmit(cs.ctx, "msg:new", fmt.Sprintf(`{"sender":"%s","message":"%s"}`, payload.Sender, payload.Message))
 }
 
-func (cs *ChatService) SendMessage(peer discovery.PeerModel, message ChatMessage) response.Response[string] {
-	url := fmt.Sprintf("http://%s:%d/api/chat/send", peer.IP, discovery.SVC_PORT)
+func (cs *ChatService) SendMessage(contact user.ContactModel, message ChatMessage) response.Response[string] {
+	currPeer := cs.discoveryService.GetPeer(contact.ID)
+	if currPeer.IP == "" {
+		return response.New("peer not found").Status(404)
+	}
+
+	url := fmt.Sprintf("http://%s:%d/api/chat/send", currPeer.IP, discovery.SVC_PORT)
 
 	payload, err := json.Marshal(message)
 	if err != nil {

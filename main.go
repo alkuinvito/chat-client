@@ -31,7 +31,7 @@ func main() {
 	// Init services
 	discoveryService := discovery.NewDiscoveryService(s)
 	chatService := chat.NewChatService(s, discoveryService)
-	userService := user.NewUserService(s, db, fiberApp, discoveryService, chatService)
+	userService := user.NewUserService(s, db, fiberApp, discoveryService)
 
 	// Init controllers
 	chatController := chat.NewChatController(chatService)

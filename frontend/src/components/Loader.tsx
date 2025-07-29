@@ -6,5 +6,5 @@ interface LoaderProps {
 }
 
 export function Loader({ className }: LoaderProps) {
-  return <Loader2 className={twMerge("h-5 w-5 animate-spin", className)} />;
+  return <Loader2 className={twMerge("size-6 animate-spin", className)} />;
 }

@@ -36,5 +36,5 @@ func (r *Router) Handle() {
 	chatRouter.Post("/send", r.chatController.CreateChat)
 
 	userRouter := api.Group("/user")
-	userRouter.Post("/pair", r.userController.PairUser)
+	userRouter.Post("/pair", r.userController.HandleUserPairing)
 }

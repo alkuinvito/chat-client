@@ -80,9 +80,7 @@ function UserRegister() {
                 </FormItem>
               )}
             />
-            <Button variant="secondary" type="submit">
-              Register
-            </Button>
+            <Button type="submit">Register</Button>
           </form>
         </Form>
       </div>

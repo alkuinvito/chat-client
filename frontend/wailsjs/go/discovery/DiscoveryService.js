@@ -6,12 +6,20 @@ export function BroadcastService(arg1, arg2) {
   return window['go']['discovery']['DiscoveryService']['BroadcastService'](arg1, arg2);
 }
 
+export function GetPeer(arg1) {
+  return window['go']['discovery']['DiscoveryService']['GetPeer'](arg1);
+}
+
 export function GetPeers() {
   return window['go']['discovery']['DiscoveryService']['GetPeers']();
 }
 
-export function QueryService(arg1) {
-  return window['go']['discovery']['DiscoveryService']['QueryService'](arg1);
+export function QueryService() {
+  return window['go']['discovery']['DiscoveryService']['QueryService']();
+}
+
+export function RefreshQuery() {
+  return window['go']['discovery']['DiscoveryService']['RefreshQuery']();
 }
 
 export function Startup(arg1) {

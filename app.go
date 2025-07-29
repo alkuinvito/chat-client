@@ -31,6 +31,7 @@ func NewApp(s *store.Store, userService *user.UserService, chatService *chat.Cha
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	a.s.Startup(ctx)
 	a.userService.Startup(ctx)
 	a.chatService.Startup(ctx)
 	a.discoveryService.Startup(ctx)

@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/mdns"
+	"github.com/grandcat/zeroconf"
 )
 
 const (
@@ -19,68 +19,68 @@ const (
 )
 
 type DiscoveryService struct {
-	ctx context.Context
-	s   *store.Store
+	ctx   context.Context
+	s     *store.Store
+	peers map[string]*PeerModel
+	mu    sync.Mutex
 }
 
 type IDiscoveryService interface {
 	BroadcastService(username string)
+	GetPeer(peerId string) PeerModel
 	GetPeers() response.Response[[]PeerModel]
-	getTxt(entry *mdns.ServiceEntry, key string) string
-	QueryService(entries chan *mdns.ServiceEntry)
+	getTxt(entry *zeroconf.ServiceEntry, key string) string
+	QueryService()
+	RefreshQuery()
 	Startup(ctx context.Context)
 }
 
 func NewDiscoveryService(s *store.Store) *DiscoveryService {
-	return &DiscoveryService{s: s}
+	peers := make(map[string]*PeerModel)
+
+	return &DiscoveryService{s: s, peers: peers}
 }
 
 func (ds *DiscoveryService) BroadcastService(id, username string) {
 	txt := []string{"ID=" + id, "USERNAME=" + username}
-	service, _ := mdns.NewMDNSService(id, SVC_NAME, SVC_DOMAIN, "", SVC_PORT, nil, txt)
-
-	server, _ := mdns.NewServer(&mdns.Config{Zone: service})
+	server, err := zeroconf.Register(id, SVC_NAME, SVC_DOMAIN, SVC_PORT, txt, nil)
+	if err != nil {
+		log.Println(err)
+	}
 	defer server.Shutdown()
 
 	<-ds.ctx.Done()
+	log.Println("Shutting down service broadcast...")
+}
+
+func (ds *DiscoveryService) GetPeer(peerId string) PeerModel {
+	var result PeerModel
+
+	ds.mu.Lock()
+	for peer := range ds.peers {
+		if peer == peerId {
+			result = *ds.peers[peer]
+		}
+	}
+	ds.mu.Unlock()
+
+	return result
 }
 
 func (ds *DiscoveryService) GetPeers() response.Response[[]PeerModel] {
-	entries := make(chan *mdns.ServiceEntry, 4)
 	var result []PeerModel
-	var wg sync.WaitGroup
 
-	username, err := ds.s.GetString("user:username")
-	if err != nil {
-		return response.New(result).Status(500)
+	ds.mu.Lock()
+	for peer := range ds.peers {
+		result = append(result, *ds.peers[peer])
 	}
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for entry := range entries {
-			id := ds.getTxt(entry, "ID")
-			peerName := ds.getTxt(entry, "USERNAME")
-
-			if peerName == username {
-				continue
-			}
-
-			if id != "" && peerName != "" {
-				result = append(result, PeerModel{ID: id, Username: peerName, IP: entry.AddrV4.String()})
-			}
-		}
-	}()
-
-	go ds.QueryService(entries)
-
-	wg.Wait()
+	ds.mu.Unlock()
 
 	return response.New(result)
 }
 
-func (ds *DiscoveryService) getTxt(entry *mdns.ServiceEntry, key string) string {
-	fields := entry.InfoFields
+func (ds *DiscoveryService) getTxt(entry *zeroconf.ServiceEntry, key string) string {
+	fields := entry.Text
 	for _, field := range fields {
 		info := strings.Split(field, "=")
 		if len(info) == 2 {
@@ -93,20 +93,106 @@ func (ds *DiscoveryService) getTxt(entry *mdns.ServiceEntry, key string) string 
 	return ""
 }
 
-func (ds *DiscoveryService) QueryService(entries chan *mdns.ServiceEntry) {
-	defer close(entries)
-
-	params := &mdns.QueryParam{
-		Service: SVC_NAME,
-		Domain:  SVC_DOMAIN,
-		Entries: entries,
-		Timeout: time.Second * 5,
-	}
-
-	err := mdns.Query(params)
+func (ds *DiscoveryService) QueryService() {
+	resolver, err := zeroconf.NewResolver(nil)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println("Failed to initialize resolver:", err)
+		return
 	}
+
+	entries := make(chan *zeroconf.ServiceEntry)
+
+	go func() {
+		username, err := ds.s.GetString("user:username")
+		if err != nil {
+			return
+		}
+
+		for {
+			select {
+			case entry := <-entries:
+				if len(entry.AddrIPv4) == 0 {
+					continue
+				}
+
+				peerId := ds.getTxt(entry, "ID")
+				peerName := ds.getTxt(entry, "USERNAME")
+
+				if peerName == username {
+					continue
+				}
+
+				if peerId != "" && peerName != "" {
+					ip := entry.AddrIPv4[0].String()
+					ds.mu.Lock()
+					ds.peers[entry.Instance] = &PeerModel{
+						ID:       peerId,
+						Username: peerName,
+						IP:       ip,
+					}
+					ds.mu.Unlock()
+				}
+			case <-ds.ctx.Done():
+				log.Println("Shutting down mDNS watcher...")
+				return
+			}
+		}
+	}()
+
+	err = resolver.Browse(ds.ctx, SVC_NAME, SVC_DOMAIN, entries)
+	if err != nil {
+		log.Println("Failed to start browse:", err.Error())
+	}
+}
+
+func (ds *DiscoveryService) RefreshQuery() {
+	resolver, err := zeroconf.NewResolver(nil)
+	if err != nil {
+		log.Println("Failed to initialize resolver:", err)
+		return
+	}
+
+	entries := make(chan *zeroconf.ServiceEntry)
+
+	go func(results chan *zeroconf.ServiceEntry) {
+		username, err := ds.s.GetString("user:username")
+		if err != nil {
+			return
+		}
+
+		for entry := range results {
+			if len(entry.AddrIPv4) == 0 {
+				continue
+			}
+
+			peerId := ds.getTxt(entry, "ID")
+			peerName := ds.getTxt(entry, "USERNAME")
+
+			if peerName == username {
+				continue
+			}
+
+			if peerId != "" && peerName != "" {
+				ip := entry.AddrIPv4[0].String()
+				ds.mu.Lock()
+				ds.peers[entry.Instance] = &PeerModel{
+					ID:       peerId,
+					Username: peerName,
+					IP:       ip,
+				}
+				ds.mu.Unlock()
+			}
+		}
+	}(entries)
+
+	ctx, cancel := context.WithTimeout(ds.ctx, time.Second*5)
+	defer cancel()
+	err = resolver.Browse(ctx, SVC_NAME, SVC_DOMAIN, entries)
+	if err != nil {
+		log.Println("Failed to start browse:", err.Error())
+	}
+
+	<-ctx.Done()
 }
 
 func (ds *DiscoveryService) Startup(ctx context.Context) {

@@ -91,9 +91,7 @@ function UserLogin() {
                 </FormItem>
               )}
             />
-            <Button variant="secondary" type="submit">
-              Login
-            </Button>
+            <Button type="submit">Login</Button>
           </form>
         </Form>
       </div>

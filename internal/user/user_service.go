@@ -2,29 +2,31 @@ package user
 
 import (
 	"bytes"
-	"chat-client/internal/chat"
 	"chat-client/internal/discovery"
 	"chat-client/pkg/encryption"
 	"chat-client/pkg/response"
 	"chat-client/pkg/store"
 	"context"
 	"crypto/ecdh"
+	"crypto/rand"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log"
+	"math/big"
 	"net/http"
+	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/gofiber/fiber/v2"
 	"github.com/oklog/ulid/v2"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
 type UserService struct {
-	chatService      *chat.ChatService
 	ctx              context.Context
 	db               *gorm.DB
 	discoveryService *discovery.DiscoveryService
@@ -33,27 +35,55 @@ type UserService struct {
 }
 
 type IUserService interface {
+	GeneratePairingCode() response.Response[string]
 	generateSharedKey() error
+	GetContacts() response.Response[[]ContactModel]
 	getDefaultUser() (UserModel, error)
 	GetProfile() response.Response[UserProfile]
+	HandleUserPairing(input RequestPairSchema) (ResponsePairSchema, error)
 	loadPrivateKey(password []byte) (*ecdh.PrivateKey, error)
 	Login(username, password string) response.Response[UserProfile]
-	PairUser(input RequestPairSchema) (ResponsePairSchema, error)
 	Register(username, password string) response.Response[UserProfile]
-	RequestPair(peer discovery.PeerModel) response.Response[string]
+	RequestPairing(input RequestPairSchema) response.Response[string]
+	ScanPeers() response.Response[[]discovery.PeerModel]
 	Startup(ctx context.Context)
 }
 
-func NewUserService(s *store.Store, db *gorm.DB, router *fiber.App, discoveryService *discovery.DiscoveryService, chatService *chat.ChatService) *UserService {
+func NewUserService(s *store.Store, db *gorm.DB, router *fiber.App, discoveryService *discovery.DiscoveryService) *UserService {
 	return &UserService{
 		s:                s,
 		db:               db,
 		discoveryService: discoveryService,
-		chatService:      chatService,
 		router:           router,
 	}
 }
 
+// Generate 6-digit pairing code and expires in 60 seconds
+func (us *UserService) GeneratePairingCode() response.Response[string] {
+	nA, err := rand.Int(rand.Reader, big.NewInt(100))
+	if err != nil {
+		return response.New("failed to generate pairing code").Status(500)
+	}
+
+	nB, err := rand.Int(rand.Reader, big.NewInt(100))
+	if err != nil {
+		return response.New("failed to generate pairing code").Status(500)
+	}
+
+	nC, err := rand.Int(rand.Reader, big.NewInt(100))
+	if err != nil {
+		return response.New("failed to generate pairing code").Status(500)
+	}
+
+	pairingCode := fmt.Sprintf("%02d%02d%02d", nA.Int64(), nB.Int64(), nC.Int64())
+
+	// pairing code expires in 60 seconds
+	us.s.SetEx("pair:code", []byte(pairingCode), time.Second*60)
+
+	return response.New(pairingCode)
+}
+
+// Generate shared key from remote public key
 func (us *UserService) generateSharedKey(remotePubkey string) ([]byte, []byte, error) {
 	password, err := us.s.Get("user:password")
 	if err != nil {
@@ -88,6 +118,19 @@ func (us *UserService) generateSharedKey(remotePubkey string) ([]byte, []byte, e
 	return shared, sharedEnc, nil
 }
 
+// Get all contacts
+func (us *UserService) GetContacts() response.Response[[]ContactModel] {
+	var result []ContactModel
+
+	err := us.db.Find(&result).Error
+	if err != nil {
+		return response.New(result).Status(500)
+	}
+
+	return response.New(result)
+}
+
+// Return created default user
 func (us *UserService) getDefaultUser() (UserModel, error) {
 	var result UserModel
 
@@ -99,6 +142,7 @@ func (us *UserService) getDefaultUser() (UserModel, error) {
 	return result, nil
 }
 
+// Get user profile
 func (us *UserService) GetProfile() response.Response[UserProfile] {
 	var result UserModel
 
@@ -108,6 +152,70 @@ func (us *UserService) GetProfile() response.Response[UserProfile] {
 	}
 
 	return response.New(result.toProfile())
+}
+
+// Handle user pairing and create shared key
+func (us *UserService) HandleUserPairing(input InitPairSchema) (ResponsePairSchema, error) {
+	var result ResponsePairSchema
+
+	pairCode, err := us.s.GetString("pair:code")
+	if err != nil {
+		return result, errors.New("pairing code not found")
+	}
+
+	if input.Code != pairCode {
+		return result, errors.New("pairing code incorrect")
+	}
+
+	// check for existing contact
+	var oldContact ContactModel
+	err = us.db.First(&oldContact, "ID = ?", input.ID).Error
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return result, errors.New("db error")
+		}
+	}
+
+	if oldContact.ID == input.ID {
+		return result, errors.New("user already paired")
+	}
+
+	pubkey, err := us.s.Get("key:public")
+	if err != nil {
+		return result, errors.New("public key not found")
+	}
+
+	shared, sharedEnc, err := us.generateSharedKey(input.Pubkey)
+	if err != nil {
+		if err.Error() == "invalid remote public key" {
+			return result, err
+		}
+
+		return result, errors.New("failed to generate shared key")
+	}
+
+	contact := ContactModel{
+		ID:        input.ID,
+		Username:  input.Username,
+		SharedKey: sharedEnc,
+	}
+
+	// save the newly paired contact
+	err = us.db.Create(&contact).Error
+	if err != nil {
+		return result, err
+	}
+
+	// store the shared key in memory
+	us.s.Set("key:shared:"+input.ID, shared)
+
+	// broadcast for new contact
+	contact.SharedKey = nil
+	runtime.EventsEmit(us.ctx, "pair:new", contact)
+
+	result.Pubkey = base64.StdEncoding.EncodeToString(pubkey)
+
+	return result, nil
 }
 
 func (us *UserService) loadPrivateKey(password []byte) (*ecdh.PrivateKey, error) {
@@ -164,45 +272,13 @@ func (us *UserService) Login(username, password string) response.Response[UserPr
 	// start broadcasting the service
 	go us.discoveryService.BroadcastService(result.ID, username)
 
+	// start service query
+	go us.discoveryService.QueryService()
+
 	// start chat server
 	go us.router.Listen(fmt.Sprintf(":%d", discovery.SVC_PORT))
 
 	return response.New(result.toProfile())
-}
-
-func (us *UserService) PairUser(input RequestPairSchema) (ResponsePairSchema, error) {
-	var result ResponsePairSchema
-	pubkey, err := us.s.Get("key:public")
-	if err != nil {
-		return result, errors.New("public key not found")
-	}
-
-	shared, sharedEnc, err := us.generateSharedKey(input.Pubkey)
-	if err != nil {
-		if err.Error() == "invalid remote public key" {
-			return result, err
-		}
-
-		return result, errors.New("unknown error")
-	}
-
-	contact := ContactModel{
-		ID:        input.ID,
-		Username:  input.Username,
-		SharedKey: sharedEnc,
-	}
-
-	err = us.db.Create(&contact).Error
-	if err != nil {
-		return result, errors.New("failed to store contact to db")
-	}
-
-	us.s.Set("key:shared:"+input.ID, shared)
-
-	result.Pubkey = base64.StdEncoding.EncodeToString(pubkey)
-
-	return result, nil
-
 }
 
 func (us *UserService) Register(username, password string) response.Response[UserProfile] {
@@ -249,78 +325,132 @@ func (us *UserService) Register(username, password string) response.Response[Use
 	return response.New(user.toProfile())
 }
 
-func (us *UserService) RequestPair(peer discovery.PeerModel) response.Response[string] {
+func (us *UserService) RequestPairing(input RequestPairSchema) response.Response[string] {
+	userId, err := us.s.GetString("user:id")
+	if err != nil {
+		return response.New("userId not found").Status(500)
+	}
+
+	username, err := us.s.GetString("user:username")
+	if err != nil {
+		return response.New("username not found").Status(500)
+	}
+
 	pubkey, err := us.s.Get("key:public")
 	if err != nil {
 		return response.New("public key not found").Status(500)
 	}
 
-	userId, err := us.s.Get("user:id")
-	if err != nil {
-		return response.New("userId not found").Status(500)
-	}
-
-	username, err := us.s.Get("user:username")
-	if err != nil {
-		return response.New("username not found").Status(500)
-	}
-
 	pubkeyEnc := base64.StdEncoding.EncodeToString(pubkey)
 
-	req := RequestPairSchema{
-		ID:       string(userId),
-		Username: string(username),
+	initReq := InitPairSchema{
+		ID:       userId,
+		Username: username,
 		Pubkey:   pubkeyEnc,
+		Code:     input.Code,
 	}
 
-	payload, err := json.Marshal(req)
+	payload, err := sonic.Marshal(&initReq)
 	if err != nil {
-		return response.New("failed to produce json").Status(500)
+		return response.New("failed to generate json").Status(500)
+	}
+
+	peer := us.discoveryService.GetPeer(input.ID)
+	if peer.IP == "" {
+		return response.New("peer is not found")
 	}
 
 	url := fmt.Sprintf("http://%s:%d/api/user/pair", peer.IP, discovery.SVC_PORT)
-
 	res, err := http.Post(url, "application/json", bytes.NewBuffer(payload))
 	if err != nil {
-		return response.New("failed to send pair request").Status(500)
+		return response.New("failed to initiate pair").Status(500)
 	}
-
 	defer res.Body.Close()
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
-		return response.New("failed to read response").Status(500)
+		return response.New("failed to read response body").Status(500)
 	}
 
-	log.Println(res.StatusCode, string(body))
+	if res.StatusCode != http.StatusOK {
+		var resErr response.ErrorResponseSchema
+		err = sonic.Unmarshal(body, &resErr)
+		if err != nil {
+			return response.New("failed to read response error schema").Status(500)
+		}
 
-	remotePubkey := ResponsePairSchema{}
-	err = json.Unmarshal(body, &remotePubkey)
-	if err != nil {
-		return response.New("failed to read response").Status(500)
+		return response.New(resErr.Error).Status(res.StatusCode)
 	}
 
-	shared, sharedEnc, err := us.generateSharedKey(remotePubkey.Pubkey)
+	var resPair ResponsePairSchema
+	err = sonic.Unmarshal(body, &resPair)
 	if err != nil {
-		log.Println(err)
+		return response.New("failed to read response pair schema").Status(500)
+	}
+
+	shared, sharedEnc, err := us.generateSharedKey(resPair.Pubkey)
+	if err != nil {
+		if err.Error() == "invalid remote public key" {
+			return response.New(err.Error()).Status(500)
+		}
+
 		return response.New("failed to generate shared key").Status(500)
 	}
 
 	contact := ContactModel{
-		ID:        peer.ID,
-		Username:  peer.Username,
+		ID:        input.ID,
+		Username:  input.Username,
 		SharedKey: sharedEnc,
 	}
 
+	// save the newly paired contact
 	err = us.db.Create(&contact).Error
 	if err != nil {
-		log.Println(err)
-		return response.New("failed to save new contact").Status(500)
+		return response.New("failed to store contact").Status(500)
 	}
 
-	us.s.Set("key:shared:"+peer.ID, shared)
+	// store the shared key in memory
+	us.s.Set("key:shared:"+input.ID, shared)
 
-	return response.New("successfully paired")
+	// broadcast for new contact
+	contact.SharedKey = nil
+	runtime.EventsEmit(us.ctx, "pair:new", contact)
+
+	return response.New("paired successfully")
+}
+
+func (us *UserService) ScanPeers() response.Response[[]discovery.PeerModel] {
+	var result []discovery.PeerModel
+	isContact := make(map[string]bool)
+
+	contacts := us.GetContacts()
+	if contacts.Code != 200 {
+		return response.New(result).Status(500)
+	}
+
+	for _, contact := range contacts.Data {
+		isContact[contact.ID] = true
+	}
+
+	// force refresh query
+	us.discoveryService.RefreshQuery()
+
+	// get query results
+	peers := us.discoveryService.GetPeers()
+	if peers.Code != 200 {
+		return response.New(result).Status(500)
+	}
+
+	// ignore active peers that is in contact list
+	for _, peer := range peers.Data {
+		if isContact[peer.ID] {
+			continue
+		}
+
+		result = append(result, peer)
+	}
+
+	return response.New(result)
 }
 
 func (us *UserService) Startup(ctx context.Context) {

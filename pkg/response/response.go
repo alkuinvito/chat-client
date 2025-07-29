@@ -1,5 +1,9 @@
 package response
 
+type ErrorResponseSchema struct {
+	Error string `json:"error"`
+}
+
 type Response[T any] struct {
 	Code int `json:"code"`
 	Data T   `json:"data"`

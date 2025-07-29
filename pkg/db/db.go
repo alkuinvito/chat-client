@@ -20,6 +20,7 @@ func NewDB() *gorm.DB {
 		log.Println(err)
 		db.AutoMigrate(&user.UserModel{})
 		db.AutoMigrate(&user.ContactModel{})
+		db.AutoMigrate(&user.PairRequestModel{})
 	}
 
 	return db

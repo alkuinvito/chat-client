@@ -8,7 +8,7 @@ require (
 	github.com/bytedance/sonic v1.14.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/gofiber/fiber/v2 v2.52.9
-	github.com/hashicorp/mdns v1.0.6
+	github.com/grandcat/zeroconf v1.0.0
 	github.com/oklog/ulid/v2 v2.1.1
 	github.com/wailsapp/wails/v2 v2.10.2
 	golang.org/x/crypto v0.40.0
@@ -19,6 +19,7 @@ require (
 	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/bytedance/sonic/loader v0.3.0 // indirect
+	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/cloudwego/base64x v0.1.5 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/glebarez/go-sqlite v1.22.0 // indirect

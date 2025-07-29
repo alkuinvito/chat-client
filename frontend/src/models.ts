@@ -30,3 +30,9 @@ export type TChatRoom = {
   peer_name: string;
   ip: string;
 };
+
+export type TPairRequestModel = {
+  id: string;
+  username: string;
+  type: string;
+};
