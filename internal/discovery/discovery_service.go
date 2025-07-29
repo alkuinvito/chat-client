@@ -54,25 +54,24 @@ func (ds *DiscoveryService) BroadcastService(id, username string) {
 }
 
 func (ds *DiscoveryService) GetPeer(peerId string) PeerModel {
-	var result PeerModel
-
 	ds.mu.Lock()
-	for peer := range ds.peers {
-		if peer == peerId {
-			result = *ds.peers[peer]
+	defer ds.mu.Unlock()
+
+	for _, peer := range ds.peers {
+		if peer != nil && peer.ID == peerId {
+			return *peer
 		}
 	}
-	ds.mu.Unlock()
 
-	return result
+	return PeerModel{}
 }
 
 func (ds *DiscoveryService) GetPeers() response.Response[[]PeerModel] {
 	var result []PeerModel
 
 	ds.mu.Lock()
-	for peer := range ds.peers {
-		result = append(result, *ds.peers[peer])
+	for _, peer := range ds.peers {
+		result = append(result, *peer)
 	}
 	ds.mu.Unlock()
 
@@ -103,8 +102,8 @@ func (ds *DiscoveryService) QueryService() {
 	entries := make(chan *zeroconf.ServiceEntry)
 
 	go func() {
-		username, err := ds.s.GetString("user:username")
-		if err != nil {
+		username := ds.s.GetString("user:username")
+		if username == "" {
 			return
 		}
 
@@ -155,8 +154,8 @@ func (ds *DiscoveryService) RefreshQuery() {
 	entries := make(chan *zeroconf.ServiceEntry)
 
 	go func(results chan *zeroconf.ServiceEntry) {
-		username, err := ds.s.GetString("user:username")
-		if err != nil {
+		username := ds.s.GetString("user:username")
+		if username == "" {
 			return
 		}
 

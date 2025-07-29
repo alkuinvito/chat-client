@@ -85,8 +85,7 @@ func (us *UserService) GeneratePairingCode() response.Response[string] {
 
 // Generate shared key from remote public key
 func (us *UserService) generateSharedKey(remotePubkey string) ([]byte, []byte, error) {
-	password, err := us.s.Get("user:password")
-	if err != nil {
+	if us.s.Get("user:password") == nil {
 		return nil, nil, errors.New("user password not found")
 	}
 
@@ -100,7 +99,7 @@ func (us *UserService) generateSharedKey(remotePubkey string) ([]byte, []byte, e
 		return nil, nil, errors.New("invalid remote public key")
 	}
 
-	priv, err := us.loadPrivateKey(password)
+	priv, err := us.loadPrivateKey([]byte(us.s.GetString("user:password")))
 	if err != nil {
 		return nil, nil, errors.New("failed to load private key")
 	}
@@ -110,7 +109,7 @@ func (us *UserService) generateSharedKey(remotePubkey string) ([]byte, []byte, e
 		return nil, nil, errors.New("failed to generate shared key")
 	}
 
-	sharedEnc, err := encryption.PasswordEncrypt(password, shared)
+	sharedEnc, err := encryption.PasswordEncrypt([]byte(us.s.GetString("user:password")), shared)
 	if err != nil {
 		return nil, nil, errors.New("failed to encrypt shared key")
 	}
@@ -158,8 +157,8 @@ func (us *UserService) GetProfile() response.Response[UserProfile] {
 func (us *UserService) HandleUserPairing(input InitPairSchema) (ResponsePairSchema, error) {
 	var result ResponsePairSchema
 
-	pairCode, err := us.s.GetString("pair:code")
-	if err != nil {
+	pairCode := us.s.GetString("pair:code")
+	if pairCode == "" {
 		return result, errors.New("pairing code not found")
 	}
 
@@ -169,7 +168,7 @@ func (us *UserService) HandleUserPairing(input InitPairSchema) (ResponsePairSche
 
 	// check for existing contact
 	var oldContact ContactModel
-	err = us.db.First(&oldContact, "ID = ?", input.ID).Error
+	err := us.db.First(&oldContact, "ID = ?", input.ID).Error
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return result, errors.New("db error")
@@ -180,8 +179,7 @@ func (us *UserService) HandleUserPairing(input InitPairSchema) (ResponsePairSche
 		return result, errors.New("user already paired")
 	}
 
-	pubkey, err := us.s.Get("key:public")
-	if err != nil {
+	if us.s.Get("key:public") == nil {
 		return result, errors.New("public key not found")
 	}
 
@@ -213,7 +211,7 @@ func (us *UserService) HandleUserPairing(input InitPairSchema) (ResponsePairSche
 	contact.SharedKey = nil
 	runtime.EventsEmit(us.ctx, "pair:new", contact)
 
-	result.Pubkey = base64.StdEncoding.EncodeToString(pubkey)
+	result.Pubkey = base64.StdEncoding.EncodeToString(us.s.Get("key:public"))
 
 	return result, nil
 }
@@ -326,22 +324,21 @@ func (us *UserService) Register(username, password string) response.Response[Use
 }
 
 func (us *UserService) RequestPairing(input RequestPairSchema) response.Response[string] {
-	userId, err := us.s.GetString("user:id")
-	if err != nil {
+	userId := us.s.GetString("user:id")
+	if userId == "" {
 		return response.New("userId not found").Status(500)
 	}
 
-	username, err := us.s.GetString("user:username")
-	if err != nil {
+	username := us.s.GetString("user:username")
+	if username == "" {
 		return response.New("username not found").Status(500)
 	}
 
-	pubkey, err := us.s.Get("key:public")
-	if err != nil {
+	if us.s.Get("key:public") == nil {
 		return response.New("public key not found").Status(500)
 	}
 
-	pubkeyEnc := base64.StdEncoding.EncodeToString(pubkey)
+	pubkeyEnc := base64.StdEncoding.EncodeToString(us.s.Get("key:public"))
 
 	initReq := InitPairSchema{
 		ID:       userId,

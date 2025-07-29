@@ -2,7 +2,6 @@ package store
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"time"
 )
@@ -17,8 +16,8 @@ type Store struct {
 type IStore interface {
 	Clear()
 	Delete(key string)
-	Get(key string) (string, error)
-	GetString(key string) (string, error)
+	Get(key string) []byte
+	GetString(key string) string
 	Keys() []string
 	Set(key, val string)
 	SetEx(key string, val []byte, expiredIn time.Duration)
@@ -59,26 +58,25 @@ func (s *Store) Delete(key string) {
 	}
 }
 
-func (s *Store) Get(key string) ([]byte, error) {
+func (s *Store) Get(key string) []byte {
 	s.Lock()
 	defer s.Unlock()
 
 	val, ok := s.m[key]
 	if !ok {
-		return nil, errors.New("key not found")
+		return nil
 	}
 
-	// copy the value only
-	return append([]byte(nil), val...), nil
+	return val
 }
 
-func (s *Store) GetString(key string) (string, error) {
+func (s *Store) GetString(key string) string {
 	val, ok := s.m[key]
 	if !ok {
-		return "", errors.New("key not found")
+		return ""
 	}
 
-	return string(val), nil
+	return string(val)
 }
 
 func (s *Store) Keys() []string {

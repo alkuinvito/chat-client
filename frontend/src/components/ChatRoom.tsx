@@ -23,24 +23,26 @@ export default function ChatRoom({ user, contact }: ChatRoomProps) {
 
   const parentRef = useRef<HTMLUListElement>(null);
 
-  const rowVirtualizer = useVirtualizer({
+  const virtualizer = useVirtualizer({
     count: messages.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 48,
     enabled: true,
   });
 
+  const items = virtualizer.getVirtualItems();
+
   const handleSubmit = (input: string) => {
     if (input.length >= 1 && input.length <= 250) {
       const message: chat.ChatMessage = {
-        sender: user.username,
+        sender: user.id,
         message: input,
       };
 
       SendMessage(contact, message)
         .then((res: TResponseSchema<string>) => {
           if (res.code != 200) {
-            LogInfo(`Error ${res.code.toString()} - ${res.code}`);
+            LogInfo(`Error ${res.code.toString()} - ${res.data}`);
           } else {
             setMessages((prev) => [...(prev ?? []), message]);
           }
@@ -60,15 +62,14 @@ export default function ChatRoom({ user, contact }: ChatRoomProps) {
   };
 
   useEffect(() => {
-    EventsOn("msg:new", (ev) => {
-      const msg = JSON.parse(ev) as ChatMessage;
+    return EventsOn("msg:new:" + contact.id, (msg: ChatMessage) => {
       setMessages((prev) => [...(prev ?? []), msg]);
     });
   }, []);
 
   useEffect(() => {
     if (messages.length > 0) {
-      rowVirtualizer.scrollToIndex(messages.length - 1, { align: "end" });
+      virtualizer.scrollToIndex(messages.length - 1, { align: "end" });
     }
   }, [messages]);
 
@@ -76,34 +77,43 @@ export default function ChatRoom({ user, contact }: ChatRoomProps) {
     <div className="grow h-full flex flex-col">
       <ul
         ref={parentRef}
-        className="grow overflow-y-auto p-2 text-left"
+        className="grow overflow-y-auto p-2 pb-0 text-left"
         style={{ willChange: "transform" }}
       >
         <div
           style={{
-            height: `${rowVirtualizer.getTotalSize()}px`,
+            height: virtualizer.getTotalSize(),
+            width: "100%",
             position: "relative",
           }}
         >
-          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-            const message = messages[virtualRow.index];
-            const isOwn = message.sender === user.username;
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              transform: `translateY(${items[0]?.start ?? 0}px)`,
+            }}
+          >
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const message = messages[virtualRow.index];
+              const isOwn = message.sender === user.id;
 
-            return (
-              <li
-                key={`msg-${virtualRow.key}`}
-                className={`absolute w-full ${isOwn ? "flex justify-end" : ""}`}
-                style={{
-                  top: 0,
-                  transform: `translateY(${virtualRow.start}px)`,
-                }}
-              >
-                <span className="max-w-1/2 px-2 py-1 bg-neutral-800 rounded-lg whitespace-pre-wrap">
-                  {message.message}
-                </span>
-              </li>
-            );
-          })}
+              return (
+                <li
+                  key={`${virtualRow.key}`}
+                  data-index={virtualRow.index}
+                  ref={virtualizer.measureElement}
+                  className={`flex w-full pb-2 ${isOwn ? "justify-end" : "justify-start"}`}
+                >
+                  <span className="max-w-1/2 px-2 py-1 bg-neutral-800 rounded-lg whitespace-pre-wrap wrap-break-word">
+                    {message.message}
+                  </span>
+                </li>
+              );
+            })}
+          </div>
         </div>
       </ul>
       <div className="flex gap-2 p-2">

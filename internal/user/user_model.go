@@ -25,13 +25,6 @@ type ContactModel struct {
 	SharedKey []byte `gorm:"not null"`
 }
 
-type PairRequestModel struct {
-	ID       string `json:"id" gorm:"primaryKey" validate:"required,alphanum"`
-	Username string `json:"username" gorm:"not null" validate:"required,alphanum,min=3,max=16"`
-	Code     string `gorm:"not null"`
-	Type     string `json:"type" gorm:"not null"`
-}
-
 type InitPairingRequest struct {
 	Peer discovery.PeerModel
 	Code string

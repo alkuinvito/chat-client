@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
@@ -26,7 +27,11 @@ func (cc *ChatController) CreateChat(c *fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "invalid chat message"})
 	}
 
-	cc.chatService.CreateChat(payload)
+	err = cc.chatService.CreateChat(payload)
+	if err != nil {
+		log.Println(err)
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "invalid chat message"})
+	}
 
 	return c.JSON(fiber.Map{"status": "message received successfully"})
 }
