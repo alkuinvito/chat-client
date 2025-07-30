@@ -9,7 +9,9 @@ import (
 	"context"
 	"crypto/ecdh"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -84,17 +86,12 @@ func (us *UserService) GeneratePairingCode() response.Response[string] {
 }
 
 // Generate shared key from remote public key
-func (us *UserService) generateSharedKey(remotePubkey string) ([]byte, []byte, error) {
+func (us *UserService) generateSharedKey(remotePubkey []byte) ([]byte, []byte, error) {
 	if us.s.Get("user:password") == nil {
 		return nil, nil, errors.New("user password not found")
 	}
 
-	encoded, err := base64.StdEncoding.DecodeString(remotePubkey)
-	if err != nil {
-		return nil, nil, errors.New("invalid remote public key")
-	}
-
-	remote, err := ecdh.P256().NewPublicKey(encoded)
+	remote, err := ecdh.P256().NewPublicKey(remotePubkey)
 	if err != nil {
 		return nil, nil, errors.New("invalid remote public key")
 	}
@@ -162,7 +159,12 @@ func (us *UserService) HandleUserPairing(input InitPairSchema) (ResponsePairSche
 		return result, errors.New("pairing code not found")
 	}
 
-	if input.Code != pairCode {
+	// generate sha256sum of pair code
+	hash := sha256.Sum256([]byte(pairCode))
+	hashString := hex.EncodeToString([]byte(hash[:]))
+
+	// checksum of both paircode
+	if input.Code != hashString {
 		return result, errors.New("pairing code incorrect")
 	}
 
@@ -183,7 +185,19 @@ func (us *UserService) HandleUserPairing(input InitPairSchema) (ResponsePairSche
 		return result, errors.New("public key not found")
 	}
 
-	shared, sharedEnc, err := us.generateSharedKey(input.Pubkey)
+	// decode base64 pubkey to bytes
+	decoded, err := base64.StdEncoding.DecodeString(input.Pubkey)
+	if err != nil {
+		return result, errors.New("invalid base64 pubkey")
+	}
+
+	// decrypt pubkey using pre-shared passcode
+	decrypted, err := encryption.PasswordDecrypt([]byte(pairCode), decoded)
+	if err != nil {
+		return result, errors.New("invalid encrypted pubkey")
+	}
+
+	shared, sharedEnc, err := us.generateSharedKey(decrypted)
 	if err != nil {
 		if err.Error() == "invalid remote public key" {
 			return result, err
@@ -211,7 +225,10 @@ func (us *UserService) HandleUserPairing(input InitPairSchema) (ResponsePairSche
 	contact.SharedKey = nil
 	runtime.EventsEmit(us.ctx, "pair:new", contact)
 
-	result.Pubkey = base64.StdEncoding.EncodeToString(us.s.Get("key:public"))
+	// encrypt public key using pre-shared passcode
+	encrypted, err := encryption.PasswordEncrypt([]byte(pairCode), us.s.Get("key:public"))
+
+	result.Pubkey = base64.StdEncoding.EncodeToString(encrypted)
 
 	return result, nil
 }
@@ -338,13 +355,24 @@ func (us *UserService) RequestPairing(input RequestPairSchema) response.Response
 		return response.New("public key not found").Status(500)
 	}
 
-	pubkeyEnc := base64.StdEncoding.EncodeToString(us.s.Get("key:public"))
+	// encrypt ecdh pubkey using pre-shared passcode
+	encrypted, err := encryption.PasswordEncrypt([]byte(input.Code), us.s.Get("key:public"))
+	if err != nil {
+		return response.New("failed to encrypt public key")
+	}
+
+	// encode pubkey to base64
+	encoded := base64.StdEncoding.EncodeToString(encrypted)
+
+	// hash passcode using sha256
+	hash := sha256.Sum256([]byte(input.Code))
+	hashString := hex.EncodeToString(hash[:])
 
 	initReq := InitPairSchema{
 		ID:       userId,
 		Username: username,
-		Pubkey:   pubkeyEnc,
-		Code:     input.Code,
+		Pubkey:   encoded,
+		Code:     hashString,
 	}
 
 	payload, err := sonic.Marshal(&initReq)
@@ -385,7 +413,19 @@ func (us *UserService) RequestPairing(input RequestPairSchema) response.Response
 		return response.New("failed to read response pair schema").Status(500)
 	}
 
-	shared, sharedEnc, err := us.generateSharedKey(resPair.Pubkey)
+	// decode base64 pubkey to bytes
+	decoded, err := base64.StdEncoding.DecodeString(resPair.Pubkey)
+	if err != nil {
+		return response.New("invalid base64 pubkey").Status(500)
+	}
+
+	// decrypt pubkey using pre-shared passcode
+	decrypted, err := encryption.PasswordDecrypt([]byte(input.Code), decoded)
+	if err != nil {
+		return response.New("invalid encrypted pubkey").Status(500)
+	}
+
+	shared, sharedEnc, err := us.generateSharedKey(decrypted)
 	if err != nil {
 		if err.Error() == "invalid remote public key" {
 			return response.New(err.Error()).Status(500)

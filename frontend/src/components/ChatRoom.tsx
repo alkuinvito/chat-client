@@ -65,7 +65,7 @@ export default function ChatRoom({ user, contact }: ChatRoomProps) {
     return EventsOn("msg:new:" + contact.id, (msg: ChatMessage) => {
       setMessages((prev) => [...(prev ?? []), msg]);
     });
-  }, []);
+  }, [contact]);
 
   useEffect(() => {
     if (messages.length > 0) {

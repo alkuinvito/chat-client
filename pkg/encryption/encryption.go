@@ -6,7 +6,6 @@ import (
 	"crypto/ecdh"
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/base64"
 	"errors"
 	"io"
 
@@ -92,13 +91,8 @@ func GenerateSharedKey(priv *ecdh.PrivateKey, remote *ecdh.PublicKey) ([]byte, e
 }
 
 func PasswordDecrypt(password, encrypted []byte) ([]byte, error) {
-	decoded, err := base64.StdEncoding.DecodeString(string(encrypted))
-	if err != nil {
-		return nil, errors.New("failed to decode encrypted payload")
-	}
-
-	salt := decoded[:16]
-	encrypted = decoded[16:]
+	salt := encrypted[:16]
+	encrypted = encrypted[16:]
 
 	// generate AES key from password
 	key, err := scrypt.Key(password, salt, 1<<15, 8, 1, 32)
@@ -134,7 +128,5 @@ func PasswordEncrypt(password, payload []byte) ([]byte, error) {
 
 	// store salt inside
 	encrypted := append(salt, ciphertext...)
-
-	// encode to base64
-	return []byte(base64.StdEncoding.EncodeToString(encrypted)), nil
+	return encrypted, nil
 }
