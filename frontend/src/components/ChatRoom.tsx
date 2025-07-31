@@ -1,25 +1,25 @@
 import type { TProfileSchema, TResponseSchema } from "@/models";
 import type { chat, user } from "../../wailsjs/go/models";
-import { EventsOn, LogInfo } from "../../wailsjs/runtime/runtime";
+import { EventsOn } from "../../wailsjs/runtime/runtime";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
-import { SendMessage } from "../../wailsjs/go/chat/ChatService";
+import { GetMessages, SendMessage } from "../../wailsjs/go/chat/ChatService";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { toast } from "sonner";
+import { ArrowDown, Info } from "lucide-react";
 
 interface ChatRoomProps {
   user: TProfileSchema;
   contact: user.ContactModel;
 }
 
-interface ChatMessage {
-  sender: string;
-  message: string;
-}
-
 export default function ChatRoom({ user, contact }: ChatRoomProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<chat.ChatMessage[]>([]);
   const [message, setMessage] = useState("");
+  const [hasMore, setHasMore] = useState(true);
+  const [autoScroll, setAutoScroll] = useState(true);
+  const [cursor, setCursor] = useState(0);
 
   const parentRef = useRef<HTMLUListElement>(null);
 
@@ -32,25 +32,54 @@ export default function ChatRoom({ user, contact }: ChatRoomProps) {
 
   const items = virtualizer.getVirtualItems();
 
+  const getMessages = (peerId: string, cursor: number) => {
+    GetMessages(peerId, cursor)
+      .then((res: TResponseSchema<chat.ChatMessage[]>) => {
+        switch (res.code) {
+          case 200:
+            if (res.data.length === 0) {
+              setHasMore(false);
+              break;
+            }
+            setHasMore(true);
+            setMessages((prev) => [...res.data, ...(prev ?? [])]);
+            break;
+          case 404:
+            setHasMore(false);
+            toast.info("No older messages", { icon: <Info /> });
+            break;
+          default:
+            toast.error("Error retrieving older messages", { icon: <Info /> });
+            break;
+        }
+      })
+      .catch(() => {});
+  };
+
   const handleSubmit = (input: string) => {
     if (input.length >= 1 && input.length <= 250) {
-      const message: chat.ChatMessage = {
+      setMessage("");
+
+      const message = {
         sender: user.id,
         message: input,
       };
 
       SendMessage(contact, message)
-        .then((res: TResponseSchema<string>) => {
-          if (res.code != 200) {
-            LogInfo(`Error ${res.code.toString()} - ${res.data}`);
-          } else {
-            setMessages((prev) => [...(prev ?? []), message]);
+        .then((res: TResponseSchema<chat.ChatMessage>) => {
+          switch (res.code) {
+            case 200:
+              setMessages((prev) => [...(prev ?? []), res.data]);
+              break;
+            case 404:
+              toast.error("Peer is appear to be offline", { icon: <Info /> });
+              break;
+            default:
+              toast.error("Failed to send message", { icon: <Info /> });
+              break;
           }
         })
-        .catch(() => {})
-        .finally(() => {
-          setMessage("");
-        });
+        .catch(() => {});
     }
   };
 
@@ -61,20 +90,65 @@ export default function ChatRoom({ user, contact }: ChatRoomProps) {
     }
   };
 
+  const scrollToBottom = () => {
+    virtualizer.scrollToIndex(messages.length - 1, { align: "end" });
+  };
+
   useEffect(() => {
-    return EventsOn("msg:new:" + contact.id, (msg: ChatMessage) => {
-      setMessages((prev) => [...(prev ?? []), msg]);
-    });
+    const elem = parentRef.current;
+    if (!elem) return;
+
+    const handleScroll = () => {
+      const distanceFromBottom =
+        elem.scrollHeight - elem.scrollTop - elem.clientHeight;
+
+      setAutoScroll(distanceFromBottom < 50);
+    };
+
+    elem.addEventListener("scroll", handleScroll);
+
+    return () => elem.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    getMessages(contact.id, 0);
+
+    const unsubscribeMsg = EventsOn(
+      "msg:new:" + contact.id,
+      (msg: chat.ChatMessage) => {
+        setMessages((prev) => [...(prev ?? []), msg]);
+      },
+    );
+
+    return () => {
+      unsubscribeMsg();
+    };
   }, [contact]);
 
   useEffect(() => {
-    if (messages.length > 0) {
-      virtualizer.scrollToIndex(messages.length - 1, { align: "end" });
+    // check if user manually scrolled up
+    if (!autoScroll) {
+      // check if user on oldest message
+      if (items[0]?.index === 0 && hasMore) {
+        // make sure the getMessages called once
+        if (messages[0].id != cursor) {
+          getMessages(contact.id, messages[0].id || 0);
+          setCursor(messages[0].id);
+        }
+      }
+    }
+  }, [items, autoScroll, hasMore, contact.id, messages]);
+
+  useEffect(() => {
+    if (autoScroll) {
+      if (messages.length > 0) {
+        scrollToBottom();
+      }
     }
   }, [messages]);
 
   return (
-    <div className="grow h-full flex flex-col">
+    <div className="grow h-full flex flex-col relative">
       <ul
         ref={parentRef}
         className="grow overflow-y-auto p-2 pb-0 text-left"
@@ -116,6 +190,21 @@ export default function ChatRoom({ user, contact }: ChatRoomProps) {
           </div>
         </div>
       </ul>
+      <div
+        className={
+          "absolute bottom-16 right-1/2 translate-x-1/2 " +
+          (autoScroll ? "hidden opacity-0" : "block opacity-100")
+        }
+      >
+        <Button
+          variant="outline"
+          onClick={scrollToBottom}
+          className="bg-neutral-900 rounded-full"
+        >
+          <ArrowDown />
+          Scroll to bottom
+        </Button>
+      </div>
       <div className="flex gap-2 p-2">
         <Textarea
           name="message"

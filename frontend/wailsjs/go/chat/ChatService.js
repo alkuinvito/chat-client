@@ -6,6 +6,10 @@ export function CreateChat(arg1) {
   return window['go']['chat']['ChatService']['CreateChat'](arg1);
 }
 
+export function GetMessages(arg1, arg2) {
+  return window['go']['chat']['ChatService']['GetMessages'](arg1, arg2);
+}
+
 export function SendMessage(arg1, arg2) {
   return window['go']['chat']['ChatService']['SendMessage'](arg1, arg2);
 }

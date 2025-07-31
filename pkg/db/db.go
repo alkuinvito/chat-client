@@ -1,6 +1,7 @@
 package db
 
 import (
+	"chat-client/internal/chat"
 	"chat-client/internal/user"
 	"log"
 
@@ -20,6 +21,7 @@ func NewDB() *gorm.DB {
 		log.Println(err)
 		db.AutoMigrate(&user.UserModel{})
 		db.AutoMigrate(&user.ContactModel{})
+		db.AutoMigrate(&chat.ChatModel{})
 	}
 
 	return db

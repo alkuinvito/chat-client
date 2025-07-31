@@ -20,7 +20,7 @@ func NewChatController(chatService *ChatService) *ChatController {
 }
 
 func (cc *ChatController) CreateChat(c *fiber.Ctx) error {
-	var payload ChatMessage
+	var payload SendMessageSchema
 
 	err := c.BodyParser(&payload)
 	if err != nil {
