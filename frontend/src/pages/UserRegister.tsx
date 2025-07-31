@@ -19,7 +19,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Info } from "lucide-react";
+import { Info, LockKeyhole, LogInIcon, WifiOff } from "lucide-react";
+import logo from "@/assets/images/logo.png";
+import { BrowserOpenURL } from "../../wailsjs/runtime";
 
 function UserRegister() {
   const navigate = useNavigate();
@@ -42,47 +44,100 @@ function UserRegister() {
           });
         }
       })
-      .catch((e) => {});
+      .catch(() => {});
   }
 
   return (
-    <MainLayout className="flex flex-col justify-center gap-16">
-      <div>
-        <h1 className="text-4xl font-bold select-none">Chat Client</h1>
-      </div>
-      <div className="mx-auto">
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(onSubmit)}
-            className="grid gap-4 w-screen max-w-80"
-          >
-            <FormField
-              control={form.control}
-              name="username"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <Input placeholder="Username" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <Input type="password" placeholder="Password" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit">Register</Button>
-          </form>
-        </Form>
+    <MainLayout>
+      <div className="grow flex flex-col md:flex-row gap-8 items-center justify-center w-full h-full mx-8">
+        <div className="max-w-80 w-full float-right clear-both">
+          <div>
+            <h1 className="mb-1 text-4xl font-bold select-none">Chat Client</h1>
+            <div className="flex items-center justify-center gap-3">
+              <span className="text-xs text-neutral-500">
+                another project from
+              </span>
+              <button
+                className="outline-none border-none text-sm flex gap-1 items-center"
+                onClick={() => {
+                  BrowserOpenURL("https://wham.my.id");
+                }}
+              >
+                <img src={logo} className="size-6" /> <span>wham.my.id</span>
+              </button>
+            </div>
+          </div>
+
+          <ul className="grid grid-rows-2 gap-4 mt-8">
+            <li className="flex items-center justify-start gap-3 p-3 border border-blue-900/50 bg-blue-900/30 text-blue-400/80 text-left text-sm rounded-lg">
+              <WifiOff />
+              <span>No need for internet, just LAN.</span>
+            </li>
+            <li className="flex items-center justify-start gap-3 p-3 border border-blue-900/50 bg-blue-900/30 text-blue-400/80 text-left text-sm rounded-lg">
+              <LockKeyhole />
+              <span>End-to-end encrypted chat.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div className="max-w-80 w-full mx-auto md:mx-0 p-4 border border-neutral-700 bg-neutral-800 rounded-lg">
+          <h3 className="text-xl mb-4">Register your new identity</h3>
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="grid gap-4 w-full"
+            >
+              <FormField
+                control={form.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input placeholder="Username" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        placeholder="Password"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="confirm_password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        placeholder="Confirm password"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit">
+                <LogInIcon />
+                Register
+              </Button>
+            </form>
+          </Form>
+        </div>
       </div>
     </MainLayout>
   );
