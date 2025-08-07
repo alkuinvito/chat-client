@@ -3,6 +3,7 @@ export namespace chat {
 	export class ChatMessage {
 	    id: number;
 	    sender: string;
+	    peer_id: string;
 	    message: string;
 	    created_at: string;
 	
@@ -14,6 +15,7 @@ export namespace chat {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.sender = source["sender"];
+	        this.peer_id = source["peer_id"];
 	        this.message = source["message"];
 	        this.created_at = source["created_at"];
 	    }

@@ -113,12 +113,12 @@ export default function ChatRoom({ user, contact }: ChatRoomProps) {
   useEffect(() => {
     getMessages(contact.id, 0);
 
-    const unsubscribeMsg = EventsOn(
-      "msg:new:" + contact.id,
-      (msg: chat.ChatMessage) => {
+    // listen for new message
+    const unsubscribeMsg = EventsOn("msg:new", (msg: chat.ChatMessage) => {
+      if (msg.peer_id === contact.id) {
         setMessages((prev) => [...(prev ?? []), msg]);
-      },
-    );
+      }
+    });
 
     return () => {
       unsubscribeMsg();

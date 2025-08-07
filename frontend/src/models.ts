@@ -1,3 +1,4 @@
+import { user } from "../wailsjs/go/models";
 import z from "zod";
 
 export type TResponseSchema<T> = {
@@ -57,4 +58,9 @@ export type TPairRequestModel = {
   id: string;
   username: string;
   type: string;
+};
+
+export type ContactList = {
+  contact: user.ContactModel;
+  unreadMessage: number;
 };

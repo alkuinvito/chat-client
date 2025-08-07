@@ -36,7 +36,6 @@ function UserLogin() {
   function onSubmit(data: TLoginSchema) {
     Login(data.username, data.password)
       .then((res: TResponseSchema<TProfileSchema>) => {
-        LogInfo(res.code.toString());
         switch (res.code) {
           case 200:
             navigate("/chat");

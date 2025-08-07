@@ -85,12 +85,14 @@ func (cs *ChatService) CreateChat(input SendMessageSchema) error {
 
 	message := ChatMessage{
 		ID:        newMsg.ID,
+		PeerID:    newMsg.PeerID,
 		Sender:    input.Sender,
 		Message:   string(decrypted),
 		CreatedAt: newMsg.CreatedAt.Format(time.RFC3339),
 	}
 
-	runtime.EventsEmit(cs.ctx, "msg:new:"+message.Sender, message)
+	// notify frontend subscriber for new message event
+	runtime.EventsEmit(cs.ctx, "msg:new", message)
 
 	return nil
 }
@@ -99,7 +101,8 @@ func (cs *ChatService) GetMessages(peerId string, cursor uint64) response.Respon
 	var messages []ChatModel
 	var results []ChatMessage
 
-	limit := 3
+	// limit the retrieved message to 20
+	limit := 20
 
 	if cursor == 0 {
 		err := cs.db.Find(&messages, "peer_id = ?", peerId).Limit(limit).Error

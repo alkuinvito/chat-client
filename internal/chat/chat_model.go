@@ -10,6 +10,7 @@ type SendMessageSchema struct {
 type ChatMessage struct {
 	ID        uint64 `json:"id"`
 	Sender    string `json:"sender" validate:"required,alphanum"`
+	PeerID    string `json:"peer_id"`
 	Message   string `json:"message" validate:"required,min=1,max=250"`
 	CreatedAt string `json:"created_at"`
 }
