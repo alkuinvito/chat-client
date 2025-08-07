@@ -1,3 +1,4 @@
-tmp
+build/bin
+node_modules
+frontend/dist
 data.db
-fyne-cross

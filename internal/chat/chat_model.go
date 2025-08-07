@@ -1,13 +1,24 @@
 package chat
 
-import "net"
+import "time"
 
-type ChatRoom struct {
-	PeerName string
-	IP       net.IP
+type SendMessageSchema struct {
+	Sender  string `json:"sender" validate:"required,alphanum"`
+	Message string `json:"message" validate:"required,min=1,max=250"`
 }
 
 type ChatMessage struct {
-	Sender  string `json:"sender"`
-	Message string `json:"message"`
+	ID        uint64 `json:"id"`
+	Sender    string `json:"sender" validate:"required,alphanum"`
+	PeerID    string `json:"peer_id"`
+	Message   string `json:"message" validate:"required,min=1,max=250"`
+	CreatedAt string `json:"created_at"`
+}
+
+type ChatModel struct {
+	ID        uint64 `gorm:"primaryKey"`
+	PeerID    string `gorm:"index"`
+	Sender    string `gorm:"not null"`
+	Message   []byte `gorm:"not null"`
+	CreatedAt time.Time
 }
