@@ -19,10 +19,10 @@ jobs:
       fail-fast: false
       matrix:
         build:
-          - name: 'App'
+          - name: 'chat-client'
             platform:  'linux/amd64'
             os: 'ubuntu-latest'
-          - name: 'App'
+          - name: 'chat-client.exe'
             platform:  'windows/amd64'
             os: 'windows-latest'
 
