@@ -1,6 +1,6 @@
 # 💬 LAN Chat Client - Private, Offline, Encrypted Messaging
 
-![app gallery](https://raw.githubusercontent.com/alkuinvito/chat-client/refs/heads/main/.github/assets/app.png)
+![app gallery](https://github.com/alkuinvito/chat-client/blob/main/.github/assets/app.png?raw=true)
 
 [![Build](https://github.com/alkuinvito/chat-client/actions/workflows/build.yml/badge.svg)](https://github.com/alkuinvito/chat-client/actions/workflows/build.yml)
 
