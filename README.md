@@ -1,10 +1,11 @@
-# 💬 LAN Chat Client - Private, Offline, Encrypted Messaging
+# 💬 Chat Client: Private, Offline, Encrypted Messaging
 
-![app gallery](https://github.com/alkuinvito/chat-client/blob/main/.github/assets/app.png?raw=true)
+![app gallery](https://raw.githubusercontent.com/alkuinvito/chat-client/refs/heads/main/.github/assets/app.png)
 
-[![Build](https://github.com/alkuinvito/chat-client/actions/workflows/build.yml/badge.svg)](https://github.com/alkuinvito/chat-client/actions/workflows/build.yml)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/alkuinvito/chat-client/build.yml)
+ ![GitHub Release](https://img.shields.io/github/v/release/alkuinvito/chat-client) ![GitHub License](https://img.shields.io/github/license/alkuinvito/chat-client)
 
-LAN Chat Client is a lightweight, cross-platform peer-to-peer chat application designed for secure communication within a local network.
+__Chat Client__ is a lightweight, cross-platform peer-to-peer chat application designed for secure communication within a local network.
 
 ## 🔐 Features
 
