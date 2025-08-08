@@ -181,7 +181,7 @@ export default function ChatRoom({ user, contact }: ChatRoomProps) {
                   ref={virtualizer.measureElement}
                   className={`flex w-full pb-2 ${isOwn ? "justify-end" : "justify-start"}`}
                 >
-                  <span className="max-w-1/2 px-2 py-1 bg-neutral-800 rounded-lg whitespace-pre-wrap wrap-break-word">
+                  <span className="max-w-1/2 px-2 py-1 bg-neutral-800 rounded-lg whitespace-pre-wrap wrap-break-word !select-text">
                     {message.message}
                   </span>
                 </li>
