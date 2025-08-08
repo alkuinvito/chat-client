@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Added
 - Add CHANGELOG.md [#11](https://github.com/alkuinvito/chat-client/pull/11).
+- Add project status badges [#13](https://github.com/alkuinvito/chat-client/pull/13).
 
 ### Fixed
 - Enable chat text selection [#10](https://github.com/alkuinvito/chat-client/pull/10).
