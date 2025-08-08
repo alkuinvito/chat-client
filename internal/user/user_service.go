@@ -260,6 +260,11 @@ func (us *UserService) Login(username, password string) response.Response[UserPr
 		return response.New(result.toProfile()).Status(404)
 	}
 
+	// check for username
+	if result.Username != username {
+		return response.New(result.toProfile()).Status(401)
+	}
+
 	// check for password
 	err = bcrypt.CompareHashAndPassword([]byte(result.Password), []byte(password))
 	if err != nil {
