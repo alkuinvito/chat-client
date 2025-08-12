@@ -6,6 +6,8 @@ import (
 	"chat-client/internal/user"
 	"chat-client/pkg/store"
 	"context"
+
+	"github.com/wailsapp/wails/v2/pkg/options"
 )
 
 // App struct
@@ -27,8 +29,11 @@ func NewApp(s *store.Store, userService *user.UserService, chatService *chat.Cha
 	}
 }
 
-// startup is called when the app starts. The context is saved
-// so we can call the runtime methods
+func (a *App) onSecondInstanceLaunch(secondInstanceData options.SecondInstanceData) {
+	println(secondInstanceData.Args)
+	println("Chat-client instance already running")
+}
+
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.s.Startup(ctx)
