@@ -55,6 +55,10 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup:        app.startup,
 		OnShutdown:       app.shutdown,
+		SingleInstanceLock: &options.SingleInstanceLock{
+			UniqueId:               "e3984e08-28dc-4e3d-b70a-45e961589cdc",
+			OnSecondInstanceLaunch: app.onSecondInstanceLaunch,
+		},
 		Bind: []any{
 			app,
 			chatService,
