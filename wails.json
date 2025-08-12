@@ -6,6 +6,12 @@
   "frontend:build": "npm run build",
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "auto",
+  "info": {
+    "companyName": "alkuinvito",
+    "productName": "chat-client",
+    "productVersion": "1.0.0",
+    "copyright": "Copyright (C) 2025 Alkuin Vito"
+  },
   "author": {
     "name": "alkuinvito",
     "email": "alkuinvito@wham.my.id"
